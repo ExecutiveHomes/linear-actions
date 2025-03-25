@@ -3,12 +3,12 @@ import * as github from '@actions/github';
 import { getLinearTickets } from './getLinearTickets';
 import { pre } from './pre';
 import { post } from './post';
-import { LinearTicket, GitHubTag, GitHubCommit } from './types';
+import { LinearTicket, GitHubTag, GitHubCommit, CommitTicketRelationship } from './types';
 
 export async function getLinearCommits(
   linearApiKey: string,
   tagPattern: string
-): Promise<LinearTicket[]> {
+): Promise<{ tickets: LinearTicket[]; relationships: CommitTicketRelationship[] }> {
   const githubToken = process.env.GITHUB_TOKEN;
   if (!githubToken) {
     throw new Error('GITHUB_TOKEN environment variable is required when running in GitHub Actions');
@@ -43,7 +43,7 @@ export async function getLinearCommits(
 
   if (matchingTags.length === 0) {
     core.info('No matching tags found');
-    return [];
+    return { tickets: [], relationships: [] };
   }
 
   // Always compare most recent tag against HEAD
@@ -60,14 +60,41 @@ export async function getLinearCommits(
     head,
   });
 
-  // Extract commit messages
-  const commitMessages = (commits.commits as GitHubCommit[]).map(commit => commit.commit.message);
+  // Extract commit messages and create relationships
+  const relationships: CommitTicketRelationship[] = [];
+  const commitMessages = (commits.commits as GitHubCommit[]).map(commit => {
+    relationships.push({
+      commit: {
+        message: commit.commit.message,
+        sha: commit.sha
+      },
+      tickets: [] // Will be populated after we fetch tickets
+    });
+    return commit.commit.message;
+  });
   
   core.info('Found commit messages:');
   commitMessages.forEach(msg => core.info(`- ${msg}`));
 
-  // Get Linear tickets from commit messages
+  // Get Linear tickets from commit messages and update relationships
   const tickets = await getLinearTickets(commitMessages, linearApiKey);
+  
+  // Update relationships with ticket information
+  for (const relationship of relationships) {
+    const matches = relationship.commit.message.match(/(?:\[)?([A-Z]+-\d+)(?:\])?/g);
+    if (matches) {
+      for (const match of matches) {
+        const ticketId = match.replace(/[\[\]]/g, '');
+        const ticket = tickets.find(t => t.id === ticketId);
+        if (ticket) {
+          relationship.tickets.push({
+            id: ticket.id,
+            url: ticket.url
+          });
+        }
+      }
+    }
+  }
   
   core.info(`Found ${tickets.length} Linear tickets`);
   if (tickets.length > 0) {
@@ -75,7 +102,7 @@ export async function getLinearCommits(
     tickets.forEach(ticket => core.info(`- ${ticket.id}: ${ticket.title}`));
   }
 
-  return tickets;
+  return { tickets, relationships };
 }
 
 async function run(): Promise<void> {
@@ -89,8 +116,9 @@ async function run(): Promise<void> {
       case 'get-linear-commits': {
         const tagPattern = core.getInput('tag-pattern', { required: true });
         core.info(`Using tag pattern: ${tagPattern}`);
-        const tickets = await getLinearCommits(linearApiKey, tagPattern);
-        core.setOutput('tickets', JSON.stringify(tickets));
+        const result = await getLinearCommits(linearApiKey, tagPattern);
+        core.setOutput('tickets', JSON.stringify(result.tickets));
+        core.setOutput('relationships', JSON.stringify(result.relationships));
         break;
       }
       // Add more cases here for future actions

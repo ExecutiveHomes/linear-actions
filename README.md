@@ -37,29 +37,47 @@ Fetches Linear tickets from commits between tags matching a specified pattern.
 | Name | Description |
 |------|-------------|
 | `tickets` | Array of Linear ticket objects with details |
+| `relationships` | Array of commit-ticket relationships showing which tickets are linked to each commit |
 
 Example output:
 ```json
-[
-  {
-    "id": "TICKET-123",
-    "title": "Add new feature",
-    "description": "Feature description",
-    "state": {
-      "name": "Done"
-    },
-    "assignee": {
-      "name": "John Doe"
-    },
-    "labels": {
-      "nodes": [
+{
+  "tickets": [
+    {
+      "id": "TICKET-123",
+      "title": "Add new feature",
+      "description": "Feature description",
+      "state": {
+        "name": "Done"
+      },
+      "assignee": {
+        "name": "John Doe"
+      },
+      "labels": {
+        "nodes": [
+          {
+            "name": "feature"
+          }
+        ]
+      },
+      "url": "https://linear.app/org/issue/TICKET-123"
+    }
+  ],
+  "relationships": [
+    {
+      "commit": {
+        "message": "feat: implement new feature [TICKET-123]",
+        "sha": "abc123..."
+      },
+      "tickets": [
         {
-          "name": "feature"
+          "id": "TICKET-123",
+          "url": "https://linear.app/org/issue/TICKET-123"
         }
       ]
     }
-  }
-]
+  ]
+}
 ```
 
 ## Development

@@ -13,11 +13,23 @@ export interface LinearTicket {
       name: string;
     }>;
   };
+  url: string;
 }
 
 export interface CommitTicket {
   message: string;
   ticket: string; // Linear ticket URL
+}
+
+export interface CommitTicketRelationship {
+  commit: {
+    message: string;
+    sha: string;
+  };
+  tickets: Array<{
+    id: string;
+    url: string;
+  }>;
 }
 
 export interface ActionInputs {
@@ -41,6 +53,7 @@ export interface GitHubTag {
 }
 
 export interface GitHubCommit {
+  sha: string;
   commit: {
     message: string;
   };

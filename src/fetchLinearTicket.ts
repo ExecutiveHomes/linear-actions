@@ -15,6 +15,7 @@ interface LinearTicket {
       name: string;
     }>;
   };
+  url: string;
 }
 
 interface LinearResponse {
@@ -57,6 +58,7 @@ export async function fetchLinearTicket(
                   name
                 }
               }
+              url
             }
           }
         `,

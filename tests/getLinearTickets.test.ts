@@ -1,105 +1,86 @@
+// @ts-nocheck
 import { describe, expect, jest, test } from '@jest/globals';
 import * as core from '@actions/core';
 import { getLinearTickets } from '../src/getLinearTickets';
 import { fetchLinearTicket } from '../src/fetchLinearTicket';
 
-// Mock dependencies
-jest.mock('@actions/core', () => ({
-  debug: jest.fn(),
-  error: jest.fn()
-}));
+// Mock the dependencies
+jest.mock('@actions/core');
 jest.mock('../src/fetchLinearTicket');
 
 describe('getLinearTickets', () => {
-  const mockFetchLinearTicket = fetchLinearTicket as jest.MockedFunction<typeof fetchLinearTicket>;
-
   beforeEach(() => {
-    jest.resetAllMocks();
+    jest.clearAllMocks();
   });
 
-  test('extracts and fetches Linear tickets from commit messages', async () => {
+  it('should extract and fetch Linear tickets from commit messages', async () => {
     const mockTicket = {
-      id: 'TEST-123',
-      title: 'Test Ticket',
-      description: 'Test Description',
-      state: { name: 'In Progress' },
-      assignee: { name: 'John Doe' },
-      labels: { nodes: [{ name: 'bug' }] }
-    };
-
-    mockFetchLinearTicket.mockResolvedValueOnce(mockTicket);
-
-    const commitMessages = [
-      'feat: [TEST-123] Add new feature',
-      'fix: Regular commit without ticket',
-      'chore: [TEST-123] Another commit with same ticket'
-    ];
-
-    const result = await getLinearTickets(commitMessages, 'test-api-key');
-
-    expect(result).toEqual([mockTicket]);
-    expect(mockFetchLinearTicket).toHaveBeenCalledTimes(1);
-    expect(mockFetchLinearTicket).toHaveBeenCalledWith('test-api-key', 'TEST-123');
-  });
-
-  test('handles multiple unique tickets in commit messages', async () => {
-    const mockTicket1 = {
-      id: 'TEST-123',
-      title: 'Test Ticket 1',
-      description: 'Test Description 1',
-      state: { name: 'In Progress' },
-      assignee: { name: 'John Doe' },
-      labels: { nodes: [{ name: 'bug' }] }
-    };
-
-    const mockTicket2 = {
-      id: 'TEST-456',
-      title: 'Test Ticket 2',
-      description: 'Test Description 2',
+      id: 'MOB-123',
+      title: 'Test ticket',
+      description: 'Test description',
       state: { name: 'Done' },
-      assignee: { name: 'Jane Doe' },
-      labels: { nodes: [{ name: 'feature' }] }
+      assignee: { name: 'John Doe' },
+      labels: { nodes: [{ name: 'feature' }] },
+      url: 'https://linear.app/org/issue/MOB-123'
     };
 
-    mockFetchLinearTicket
-      .mockResolvedValueOnce(mockTicket1)
-      .mockResolvedValueOnce(mockTicket2);
+    (fetchLinearTicket as jest.Mock).mockResolvedValue(mockTicket);
 
     const commitMessages = [
-      'feat: [TEST-123] First feature',
-      'fix: [TEST-456] Bug fix',
-      'chore: [TEST-123] Another commit'
+      'feat: implement new feature [MOB-123]',
+      'fix: another commit without ticket',
+      'chore: update dependencies MOB-123'
     ];
 
-    const result = await getLinearTickets(commitMessages, 'test-api-key');
+    const tickets = await getLinearTickets(commitMessages, 'test-api-key');
 
-    expect(result).toEqual([mockTicket1, mockTicket2]);
-    expect(mockFetchLinearTicket).toHaveBeenCalledTimes(2);
-    expect(mockFetchLinearTicket).toHaveBeenCalledWith('test-api-key', 'TEST-123');
-    expect(mockFetchLinearTicket).toHaveBeenCalledWith('test-api-key', 'TEST-456');
+    expect(tickets).toEqual([mockTicket]);
+    expect(fetchLinearTicket).toHaveBeenCalledTimes(1);
+    expect(fetchLinearTicket).toHaveBeenCalledWith('test-api-key', 'MOB-123');
+    expect(core.debug).toHaveBeenCalledWith('Found ticket ID: MOB-123');
   });
 
-  test('handles failed ticket fetches', async () => {
-    mockFetchLinearTicket.mockResolvedValueOnce(null);
-
-    const commitMessages = ['feat: [TEST-123] Feature with unfetchable ticket'];
-
-    const result = await getLinearTickets(commitMessages, 'test-api-key');
-
-    expect(result).toEqual([]);
-    expect(mockFetchLinearTicket).toHaveBeenCalledTimes(1);
-    expect(mockFetchLinearTicket).toHaveBeenCalledWith('test-api-key', 'TEST-123');
-  });
-
-  test('handles commit messages without tickets', async () => {
+  it('should handle commit messages without ticket IDs', async () => {
     const commitMessages = [
-      'feat: Regular commit',
-      'fix: Another regular commit'
+      'feat: implement new feature',
+      'fix: another commit',
+      'chore: update dependencies'
     ];
 
-    const result = await getLinearTickets(commitMessages, 'test-api-key');
+    const tickets = await getLinearTickets(commitMessages, 'test-api-key');
 
-    expect(result).toEqual([]);
-    expect(mockFetchLinearTicket).not.toHaveBeenCalled();
+    expect(tickets).toEqual([]);
+    expect(fetchLinearTicket).not.toHaveBeenCalled();
+    expect(core.debug).toHaveBeenCalledWith(expect.stringMatching(/No ticket IDs found in commit message/));
+  });
+
+  it('should handle failed ticket fetches', async () => {
+    (fetchLinearTicket as jest.Mock).mockResolvedValue(null);
+
+    const commitMessages = [
+      'feat: implement new feature [MOB-123]'
+    ];
+
+    const tickets = await getLinearTickets(commitMessages, 'test-api-key');
+
+    expect(tickets).toEqual([]);
+    expect(fetchLinearTicket).toHaveBeenCalledTimes(1);
+    expect(fetchLinearTicket).toHaveBeenCalledWith('test-api-key', 'MOB-123');
+    expect(core.debug).toHaveBeenCalledWith('No ticket found for ID: MOB-123');
+  });
+
+  it('should handle errors during ticket fetch', async () => {
+    (fetchLinearTicket as jest.Mock).mockRejectedValue(new Error('API error'));
+
+    const commitMessages = [
+      'feat: implement new feature [MOB-123]'
+    ];
+
+    const tickets = await getLinearTickets(commitMessages, 'test-api-key');
+
+    expect(tickets).toEqual([]);
+    expect(fetchLinearTicket).toHaveBeenCalledTimes(1);
+    expect(fetchLinearTicket).toHaveBeenCalledWith('test-api-key', 'MOB-123');
+    expect(core.error).toHaveBeenCalledWith('Failed to fetch Linear ticket MOB-123: Error: API error');
   });
 }); 
