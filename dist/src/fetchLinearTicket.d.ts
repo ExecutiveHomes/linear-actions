@@ -13,6 +13,7 @@ interface LinearTicket {
             name: string;
         }>;
     };
+    url: string;
 }
 export declare function fetchLinearTicket(linearApiKey: string, ticketId: string): Promise<LinearTicket | null>;
 export {};

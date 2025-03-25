@@ -33,36 +33,25 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
+// @ts-nocheck
 const globals_1 = require("@jest/globals");
-const github = __importStar(require("@actions/github"));
 const core = __importStar(require("@actions/core"));
 const fetchLinearTicket_1 = require("../src/fetchLinearTicket");
-// Mock the GitHub module
-globals_1.jest.mock('@actions/github', () => ({
-    getOctokit: globals_1.jest.fn()
-}));
 // Mock the core module
 globals_1.jest.mock('@actions/core', () => ({
     getInput: globals_1.jest.fn(),
     debug: globals_1.jest.fn(),
     setFailed: globals_1.jest.fn()
 }));
+// Mock global fetch
+const mockFetch = globals_1.jest.fn();
+global.fetch = mockFetch;
 (0, globals_1.describe)('fetchLinearTicket', () => {
-    let mockRequest;
-    let mockGetOctokit;
     beforeEach(() => {
         // Reset all mocks before each test
         globals_1.jest.clearAllMocks();
         // Mock getInput to return a test API key
         core.getInput.mockReturnValue('test-api-key');
-        // Create a mock request function
-        mockRequest = globals_1.jest.fn();
-        // Create a mock getOctokit function that returns an object with a request method
-        mockGetOctokit = globals_1.jest.fn().mockReturnValue({
-            request: mockRequest
-        });
-        // Replace the real getOctokit with our mock
-        github.getOctokit.mockImplementation(mockGetOctokit);
     });
     it('should fetch a Linear ticket successfully', async () => {
         const mockTicket = {
@@ -73,64 +62,61 @@ globals_1.jest.mock('@actions/core', () => ({
             assignee: { name: 'John Doe' },
             labels: { nodes: [{ name: 'bug' }] }
         };
-        mockRequest.mockImplementation(() => Promise.resolve({
-            status: 200,
-            url: 'https://api.linear.app/graphql',
-            headers: {},
-            data: {
+        const mockResponse = {
+            ok: true,
+            json: globals_1.jest.fn().mockResolvedValue({
                 data: {
                     issue: mockTicket
                 }
-            }
-        }));
+            })
+        };
+        mockFetch.mockResolvedValue(mockResponse);
         const result = await (0, fetchLinearTicket_1.fetchLinearTicket)('test-api-key', 'TEST-123');
         (0, globals_1.expect)(result).toEqual(mockTicket);
-        (0, globals_1.expect)(mockGetOctokit).toHaveBeenCalledWith('');
-        (0, globals_1.expect)(mockRequest).toHaveBeenCalledWith('POST https://api.linear.app/graphql', globals_1.expect.objectContaining({
+        (0, globals_1.expect)(mockFetch).toHaveBeenCalledWith('https://api.linear.app/graphql', globals_1.expect.objectContaining({
+            method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': 'Bearer test-api-key'
+                'Authorization': 'test-api-key'
             },
-            data: {
-                query: globals_1.expect.stringContaining('query GetTicket($id: String!)'),
-                variables: {
-                    id: 'TEST-123'
-                }
-            }
+            body: globals_1.expect.stringContaining('TEST-123')
         }));
+        (0, globals_1.expect)(core.debug).toHaveBeenCalledWith('Fetching Linear ticket TEST-123');
+        (0, globals_1.expect)(core.debug).toHaveBeenCalledWith(globals_1.expect.stringContaining('Successfully fetched ticket:'));
     });
     it('should handle API errors gracefully', async () => {
-        mockRequest.mockImplementation(() => Promise.resolve({
-            status: 200,
-            url: 'https://api.linear.app/graphql',
-            headers: {},
-            data: {
+        const mockResponse = {
+            ok: true,
+            json: globals_1.jest.fn().mockResolvedValue({
                 errors: [{ message: 'API Error' }]
-            }
-        }));
+            })
+        };
+        mockFetch.mockResolvedValue(mockResponse);
         const result = await (0, fetchLinearTicket_1.fetchLinearTicket)('test-api-key', 'TEST-123');
         (0, globals_1.expect)(result).toBeNull();
         (0, globals_1.expect)(core.setFailed).toHaveBeenCalledWith('Failed to fetch Linear ticket: API Error');
+        (0, globals_1.expect)(core.debug).toHaveBeenCalledWith('Fetching Linear ticket TEST-123');
     });
     it('should handle network errors gracefully', async () => {
-        mockRequest.mockImplementation(() => Promise.reject(new Error('Network error')));
+        mockFetch.mockRejectedValue(new Error('Network error'));
         const result = await (0, fetchLinearTicket_1.fetchLinearTicket)('test-api-key', 'TEST-123');
         (0, globals_1.expect)(result).toBeNull();
         (0, globals_1.expect)(core.setFailed).toHaveBeenCalledWith('Failed to fetch Linear ticket: Network error');
+        (0, globals_1.expect)(core.debug).toHaveBeenCalledWith('Fetching Linear ticket TEST-123');
     });
     it('should handle missing ticket data gracefully', async () => {
-        mockRequest.mockImplementation(() => Promise.resolve({
-            status: 200,
-            url: 'https://api.linear.app/graphql',
-            headers: {},
-            data: {
+        const mockResponse = {
+            ok: true,
+            json: globals_1.jest.fn().mockResolvedValue({
                 data: {
                     issue: null
                 }
-            }
-        }));
+            })
+        };
+        mockFetch.mockResolvedValue(mockResponse);
         const result = await (0, fetchLinearTicket_1.fetchLinearTicket)('test-api-key', 'TEST-123');
         (0, globals_1.expect)(result).toBeNull();
         (0, globals_1.expect)(core.setFailed).toHaveBeenCalledWith('No ticket data found in response');
+        (0, globals_1.expect)(core.debug).toHaveBeenCalledWith('Fetching Linear ticket TEST-123');
     });
 });

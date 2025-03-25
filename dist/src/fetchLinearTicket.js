@@ -43,7 +43,7 @@ async function fetchLinearTicket(linearApiKey, ticketId) {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `${linearApiKey}`,
+                'Authorization': linearApiKey,
             },
             body: JSON.stringify({
                 query: `
@@ -63,6 +63,7 @@ async function fetchLinearTicket(linearApiKey, ticketId) {
                   name
                 }
               }
+              url
             }
           }
         `,
@@ -73,18 +74,18 @@ async function fetchLinearTicket(linearApiKey, ticketId) {
         });
         const responseData = await response.json();
         if (responseData.errors) {
-            core.error(`Failed to fetch Linear ticket: ${responseData.errors[0].message}`);
+            core.setFailed(`Failed to fetch Linear ticket: ${responseData.errors[0].message}`);
             return null;
         }
         if (!((_a = responseData.data) === null || _a === void 0 ? void 0 : _a.issue)) {
-            core.error('No ticket data found in response');
+            core.setFailed('No ticket data found in response');
             return null;
         }
         core.debug(`Successfully fetched ticket: ${JSON.stringify(responseData.data.issue, null, 2)}`);
         return responseData.data.issue;
     }
     catch (error) {
-        core.error(`Failed to fetch Linear ticket: ${error.message}`);
+        core.setFailed(`Failed to fetch Linear ticket: ${error.message}`);
         return null;
     }
 }

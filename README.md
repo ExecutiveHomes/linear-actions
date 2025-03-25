@@ -2,6 +2,35 @@
 
 A collection of GitHub Actions for Linear integration.
 
+## Installation
+
+This package is published to GitHub Packages. To install it, you'll need to:
+
+1. Create a Personal Access Token (PAT) with `read:packages` scope
+2. Configure npm or yarn to use GitHub Packages for the `@executivehomes` scope
+
+```bash
+# Configure npm
+echo "@executivehomes:registry=https://npm.pkg.github.com" >> .npmrc
+echo "//npm.pkg.github.com/:_authToken=YOUR_PAT" >> .npmrc
+
+# Or configure yarn
+echo "npmScopes:
+  executivehomes:
+    npmRegistryServer: https://npm.pkg.github.com
+    npmAuthToken: YOUR_PAT" >> .yarnrc.yml
+```
+
+Then install the package:
+
+```bash
+# Using npm
+npm install @executivehomes/linear-actions
+
+# Using yarn
+yarn add @executivehomes/linear-actions
+```
+
 ## Available Actions
 
 ### Get Linear Commits
