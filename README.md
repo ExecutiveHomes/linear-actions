@@ -1,26 +1,30 @@
-# Get Linear Tickets GitHub Action
+# Linear Actions
 
-This GitHub Action fetches Linear tickets from commits between tags matching a specified pattern.
+A collection of GitHub Actions for Linear integration.
 
-## Usage
+## Available Actions
+
+### Get Linear Tickets
+
+Fetches Linear tickets from commits between tags matching a specified pattern.
 
 ```yaml
 - name: Get Linear Tickets
   id: linear_tickets
-  uses: executivehomes/get-linear-tickets@v1
+  uses: executivehomes/linear-actions@v1
   with:
     linear-api-key: ${{ secrets.LINEAR_API_KEY }}
     tag-pattern: "release/*"
 ```
 
-## Inputs
+#### Inputs
 
 | Name | Description | Required | Default |
 |------|-------------|----------|---------|
 | `linear-api-key` | Linear API Key | Yes | - |
 | `tag-pattern` | Tag pattern to match commits (e.g., "release/*") | Yes | - |
 
-## Outputs
+#### Outputs
 
 | Name | Description |
 |------|-------------|

@@ -1,7 +1,7 @@
 {
-  "name": "@executivehomes/get-linear-tickets",
+  "name": "@executivehomes/linear-actions",
   "version": "1.0.0",
-  "description": "GitHub Action to fetch Linear tickets from commits matching a tag pattern",
+  "description": "GitHub Actions for Linear integration",
   "main": "dist/src/index.js",
   "types": "dist/src/index.d.ts",
   "files": [
