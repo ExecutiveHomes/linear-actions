@@ -47,8 +47,7 @@ async function pre() {
         // Validate required inputs
         const linearApiKey = core.getInput('linear-api-key', { required: true });
         const tagPattern = core.getInput('tag-pattern', { required: true });
-        const githubToken = core.getInput('github-token', { required: true });
-        if (!linearApiKey || !tagPattern || !githubToken) {
+        if (!linearApiKey || !tagPattern) {
             throw new Error('Missing required inputs');
         }
     }

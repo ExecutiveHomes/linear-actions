@@ -221,7 +221,7 @@ const post_1 = __nccwpck_require__(9548);
 async function getLinearCommits(linearApiKey, tagPattern) {
     const githubToken = process.env.GITHUB_TOKEN;
     if (!githubToken) {
-        throw new Error('GITHUB_TOKEN environment variable is required');
+        throw new Error('GITHUB_TOKEN environment variable is required when running in GitHub Actions');
     }
     const octokit = github.getOctokit(githubToken);
     // List all tags
@@ -229,23 +229,35 @@ async function getLinearCommits(linearApiKey, tagPattern) {
         owner: github.context.repo.owner,
         repo: github.context.repo.repo,
     });
+    core.info(`Found ${tags.length} total tags`);
+    core.info('All tags:');
+    tags.forEach(tag => core.info(`- ${tag.name}`));
     // Filter tags matching the pattern
     const matchingTags = tags.filter(tag => {
-        const pattern = new RegExp(tagPattern);
-        return pattern.test(tag.name);
+        const pattern = new RegExp(tagPattern.replace('*', '.*'));
+        const matches = pattern.test(tag.name);
+        core.info(`Tag ${tag.name} ${matches ? 'matches' : 'does not match'} pattern ${tagPattern}`);
+        return matches;
     });
+    core.info(`Found ${matchingTags.length} matching tags`);
+    core.info('Matching tags:');
+    matchingTags.forEach(tag => core.info(`- ${tag.name}`));
     // Sort tags by name (newest first)
     matchingTags.sort((a, b) => b.name.localeCompare(a.name));
-    if (matchingTags.length < 2) {
-        core.info('Not enough tags found to compare');
+    if (matchingTags.length === 0) {
+        core.info('No matching tags found');
         return [];
     }
-    // Get commits between the two most recent tags
+    // Always compare most recent tag against HEAD
+    const base = matchingTags[0].name;
+    const head = 'HEAD';
+    core.info(`Comparing ${base}...${head}`);
+    // Get commits between the base and head
     const { data: commits } = await octokit.rest.repos.compareCommits({
         owner: github.context.repo.owner,
         repo: github.context.repo.repo,
-        base: matchingTags[1].name,
-        head: matchingTags[0].name,
+        base,
+        head,
     });
     // Extract commit messages
     const commitMessages = commits.commits.map(commit => commit.commit.message);
@@ -260,6 +272,7 @@ async function run() {
         switch (action) {
             case 'get-linear-commits': {
                 const tagPattern = core.getInput('tag-pattern', { required: true });
+                core.info(`Using tag pattern: ${tagPattern}`);
                 const tickets = await getLinearCommits(linearApiKey, tagPattern);
                 core.setOutput('tickets', JSON.stringify(tickets));
                 break;
@@ -379,8 +392,7 @@ async function pre() {
         // Validate required inputs
         const linearApiKey = core.getInput('linear-api-key', { required: true });
         const tagPattern = core.getInput('tag-pattern', { required: true });
-        const githubToken = core.getInput('github-token', { required: true });
-        if (!linearApiKey || !tagPattern || !githubToken) {
+        if (!linearApiKey || !tagPattern) {
             throw new Error('Missing required inputs');
         }
     }

@@ -41,17 +41,23 @@ export async function getLinearCommits(
   // Sort tags by name (newest first)
   matchingTags.sort((a, b) => b.name.localeCompare(a.name));
 
-  if (matchingTags.length < 2) {
-    core.info('Not enough tags found to compare');
+  if (matchingTags.length === 0) {
+    core.info('No matching tags found');
     return [];
   }
 
-  // Get commits between the two most recent tags
+  // Always compare most recent tag against HEAD
+  const base = matchingTags[0].name;
+  const head = 'HEAD';
+
+  core.info(`Comparing ${base}...${head}`);
+
+  // Get commits between the base and head
   const { data: commits } = await octokit.rest.repos.compareCommits({
     owner: github.context.repo.owner,
     repo: github.context.repo.repo,
-    base: matchingTags[1].name,
-    head: matchingTags[0].name,
+    base,
+    head,
   });
 
   // Extract commit messages

@@ -8,7 +8,13 @@ A collection of GitHub Actions for Linear integration.
 
 Fetches Linear tickets from commits between tags matching a specified pattern.
 
+**Important**: This action requires access to your git history to compare tags. Make sure to set `fetch-depth: 0` in your checkout step:
+
 ```yaml
+- uses: actions/checkout@v4
+  with:
+    fetch-depth: 0
+
 - name: Get Linear Commits
   id: linear_commits
   uses: executivehomes/linear-actions@v1
