@@ -37,7 +37,7 @@ export async function fetchLinearTicket(
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${linearApiKey}`,
+        'Authorization': linearApiKey,
       },
       body: JSON.stringify({
         query: `
