@@ -62,9 +62,20 @@ export async function getLinearCommits(
 
   // Extract commit messages
   const commitMessages = (commits.commits as GitHubCommit[]).map(commit => commit.commit.message);
+  
+  core.info('Found commit messages:');
+  commitMessages.forEach(msg => core.info(`- ${msg}`));
 
   // Get Linear tickets from commit messages
-  return getLinearTickets(commitMessages, linearApiKey);
+  const tickets = await getLinearTickets(commitMessages, linearApiKey);
+  
+  core.info(`Found ${tickets.length} Linear tickets`);
+  if (tickets.length > 0) {
+    core.info('Tickets found:');
+    tickets.forEach(ticket => core.info(`- ${ticket.id}: ${ticket.title}`));
+  }
+
+  return tickets;
 }
 
 async function run(): Promise<void> {
