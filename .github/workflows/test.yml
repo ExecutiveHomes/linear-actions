@@ -29,11 +29,6 @@ jobs:
       - name: Run tests
         run: yarn test
         
-      - name: Debug Linear API Key
-        run: |
-          echo "LINEAR_API_KEY exists: ${{ secrets.LINEAR_API_KEY != '' }}"
-          echo "LINEAR_API_KEY length: ${{ length(secrets.LINEAR_API_KEY) }}"
-        
       - name: Test getLinearCommits Action
         id: linear_commits
         uses: ./
