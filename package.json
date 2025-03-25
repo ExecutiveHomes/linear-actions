@@ -1,6 +1,6 @@
 {
   "name": "@executivehomes/linear-actions",
-  "version": "1.0.10",
+  "version": "1.0.11",
   "description": "GitHub Actions for Linear integration",
   "main": "dist/index.js",
   "types": "dist/src/index.d.ts",
@@ -19,7 +19,9 @@
     "build": "tsc && ncc build dist/src/index.js -o dist && ncc build dist/src/pre.js -o dist/pre && ncc build dist/src/post.js -o dist/post",
     "format": "prettier --write '**/*.ts'",
     "format-check": "prettier --check '**/*.ts'",
-    "lint": "eslint . --ext .ts"
+    "lint": "eslint . --ext .ts",
+    "prepublishOnly": "yarn build && yarn test",
+    "prepublish": "yarn build && yarn test"
   },
   "keywords": [
     "github-actions",
