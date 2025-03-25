@@ -4,40 +4,7 @@ A collection of GitHub Actions for Linear integration.
 
 ## Installation
 
-This package is published to GitHub Packages. To install it, you'll need to:
-
-1. Create a Personal Access Token (PAT) with `read:packages` scope
-2. Configure npm or yarn to use GitHub Packages for the `@executivehomes` scope
-
-```bash
-# Configure npm
-echo "@executivehomes:registry=https://npm.pkg.github.com" >> .npmrc
-echo "//npm.pkg.github.com/:_authToken=YOUR_PAT" >> .npmrc
-
-# Or configure yarn
-echo "npmScopes:
-  executivehomes:
-    npmRegistryServer: https://npm.pkg.github.com
-    npmAuthToken: YOUR_PAT" >> .yarnrc.yml
-```
-
-Then install the package:
-
-```bash
-# Using npm
-npm install @executivehomes/linear-actions
-
-# Using yarn
-yarn add @executivehomes/linear-actions
-```
-
-## Available Actions
-
-### Get Linear Commits
-
-Fetches Linear tickets from commits between tags matching a specified pattern.
-
-**Important**: This action requires access to your git history to compare tags. Make sure to set `fetch-depth: 0` in your checkout step:
+Simply reference the action in your workflow:
 
 ```yaml
 - uses: actions/checkout@v4
@@ -46,12 +13,20 @@ Fetches Linear tickets from commits between tags matching a specified pattern.
 
 - name: Get Linear Commits
   id: linear_commits
-  uses: executivehomes/linear-actions@v1
+  uses: ExecutiveHomes/linear-actions@v1
   with:
     action: get-linear-commits
     linear-api-key: ${{ secrets.LINEAR_API_KEY }}
     tag-pattern: "release/*"
 ```
+
+**Note**: This action requires access to your git history to compare tags, which is why we set `fetch-depth: 0` in the checkout step.
+
+## Available Actions
+
+### Get Linear Commits
+
+Fetches Linear tickets from commits between tags matching a specified pattern.
 
 #### Inputs
 

@@ -46,7 +46,6 @@ export async function fetchLinearTicket(
             issue(id: $id) {
               id
               title
-              description
               state {
                 name
               }
