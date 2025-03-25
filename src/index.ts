@@ -3,12 +3,12 @@ import * as github from '@actions/github';
 import { getLinearTickets } from './getLinearTickets';
 import { pre } from './pre';
 import { post } from './post';
-import { LinearTicket, GitHubTag, GitHubCommit, CommitTicketRelationship } from './types';
+import { LinearTicket } from './types';
 
 export async function getLinearCommits(
   linearApiKey: string,
   tagPattern: string
-): Promise<{ tickets: LinearTicket[]; relationships: CommitTicketRelationship[] }> {
+): Promise<{ tickets: LinearTicket[] }> {
   const githubToken = process.env.GITHUB_TOKEN;
   if (!githubToken) {
     throw new Error('GITHUB_TOKEN environment variable is required when running in GitHub Actions');
@@ -27,7 +27,7 @@ export async function getLinearCommits(
   tags.forEach(tag => core.info(`- ${tag.name}`));
 
   // Filter tags matching the pattern
-  const matchingTags = (tags as GitHubTag[]).filter(tag => {
+  const matchingTags = tags.filter(tag => {
     const pattern = new RegExp(tagPattern.replace('*', '.*'));
     const matches = pattern.test(tag.name);
     core.info(`Tag ${tag.name} ${matches ? 'matches' : 'does not match'} pattern ${tagPattern}`);
@@ -38,12 +38,9 @@ export async function getLinearCommits(
   core.info('Matching tags:');
   matchingTags.forEach(tag => core.info(`- ${tag.name}`));
 
-  // Sort tags by name (newest first)
-  matchingTags.sort((a, b) => b.name.localeCompare(a.name));
-
   if (matchingTags.length === 0) {
     core.info('No matching tags found');
-    return { tickets: [], relationships: [] };
+    return { tickets: [] };
   }
 
   // Always compare most recent tag against HEAD
@@ -60,49 +57,39 @@ export async function getLinearCommits(
     head,
   });
 
-  // Extract commit messages and create relationships
-  const relationships: CommitTicketRelationship[] = [];
-  const commitMessages = (commits.commits as GitHubCommit[]).map(commit => {
-    relationships.push({
-      commit: {
-        message: commit.commit.message,
-        sha: commit.sha
-      },
-      tickets: [] // Will be populated after we fetch tickets
-    });
-    return commit.commit.message;
-  });
+  // Extract commit messages
+  const commitMessages = commits.commits.map(commit => commit.commit.message);
   
   core.info('Found commit messages:');
   commitMessages.forEach(msg => core.info(`- ${msg}`));
 
-  // Get Linear tickets from commit messages and update relationships
+  // Get Linear tickets from commit messages
   const tickets = await getLinearTickets(commitMessages, linearApiKey);
   
-  // Update relationships with ticket information
-  for (const relationship of relationships) {
-    const matches = relationship.commit.message.match(/(?:\[)?([A-Z]+-\d+)(?:\])?/g);
-    if (matches) {
-      for (const match of matches) {
-        const ticketId = match.replace(/[\[\]]/g, '');
-        const ticket = tickets.find(t => t.id === ticketId);
-        if (ticket) {
-          relationship.tickets.push({
-            id: ticket.id,
-            url: ticket.url
-          });
-        }
-      }
-    }
-  }
+  // Add commits to each ticket
+  const ticketsWithCommits = tickets.map(ticket => {
+    const ticketCommits = commits.commits.filter(commit => {
+      const matches = commit.commit.message.match(/(?:\[)?([A-Z]+-\d+)(?:\])?/g);
+      if (!matches) return false;
+      return matches.some(match => match.replace(/[\[\]]/g, '') === ticket.id);
+    }).map(commit => ({
+      message: commit.commit.message,
+      sha: commit.sha
+    }));
+
+    return {
+      ...ticket,
+      commits: ticketCommits
+    };
+  });
   
-  core.info(`Found ${tickets.length} Linear tickets`);
-  if (tickets.length > 0) {
+  core.info(`Found ${ticketsWithCommits.length} Linear tickets`);
+  if (ticketsWithCommits.length > 0) {
     core.info('Tickets found:');
-    tickets.forEach(ticket => core.info(`- ${ticket.id}: ${ticket.title}`));
+    ticketsWithCommits.forEach(ticket => core.info(`- ${ticket.id}: ${ticket.title}`));
   }
 
-  return { tickets, relationships };
+  return { tickets: ticketsWithCommits };
 }
 
 async function run(): Promise<void> {
@@ -118,10 +105,8 @@ async function run(): Promise<void> {
         core.info(`Using tag pattern: ${tagPattern}`);
         const result = await getLinearCommits(linearApiKey, tagPattern);
         core.setOutput('tickets', JSON.stringify(result.tickets));
-        core.setOutput('relationships', JSON.stringify(result.relationships));
         break;
       }
-      // Add more cases here for future actions
       default:
         throw new Error(`Unknown action: ${action}`);
     }

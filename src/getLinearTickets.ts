@@ -29,7 +29,10 @@ export async function getLinearTickets(
           const ticket = await fetchLinearTicket(linearApiKey, ticketId);
           if (ticket) {
             core.debug(`Successfully fetched ticket: ${ticketId}`);
-            tickets.push(ticket);
+            tickets.push({
+              ...ticket,
+              commits: []
+            });
           } else {
             core.debug(`No ticket found for ID: ${ticketId}`);
           }

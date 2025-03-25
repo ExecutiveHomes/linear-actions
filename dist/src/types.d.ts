@@ -14,6 +14,10 @@ export interface LinearTicket {
         }>;
     };
     url: string;
+    commits: Array<{
+        message: string;
+        sha: string;
+    }>;
 }
 export interface CommitTicket {
     message: string;

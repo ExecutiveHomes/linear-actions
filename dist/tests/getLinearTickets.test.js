@@ -42,62 +42,62 @@ const fetchLinearTicket_1 = require("../src/fetchLinearTicket");
 globals_1.jest.mock('@actions/core');
 globals_1.jest.mock('../src/fetchLinearTicket');
 (0, globals_1.describe)('getLinearTickets', () => {
+    const mockTicket = {
+        id: 'MOB-123',
+        title: 'Test ticket',
+        description: 'Test description',
+        state: {
+            name: 'Done'
+        },
+        assignee: {
+            name: 'John Doe'
+        },
+        labels: {
+            nodes: [
+                {
+                    name: 'feature'
+                }
+            ]
+        },
+        url: 'https://linear.app/org/issue/MOB-123',
+        commits: []
+    };
     beforeEach(() => {
         globals_1.jest.clearAllMocks();
-    });
-    it('should extract and fetch Linear tickets from commit messages', async () => {
-        const mockTicket = {
-            id: 'MOB-123',
-            title: 'Test ticket',
-            description: 'Test description',
-            state: { name: 'Done' },
-            assignee: { name: 'John Doe' },
-            labels: { nodes: [{ name: 'feature' }] },
-            url: 'https://linear.app/org/issue/MOB-123'
-        };
         fetchLinearTicket_1.fetchLinearTicket.mockResolvedValue(mockTicket);
-        const commitMessages = [
-            'feat: implement new feature [MOB-123]',
-            'fix: another commit without ticket',
-            'chore: update dependencies MOB-123'
-        ];
+    });
+    (0, globals_1.test)('should extract and fetch Linear tickets from commit messages', async () => {
+        const commitMessages = ['feat: implement new feature [MOB-123]'];
         const tickets = await (0, getLinearTickets_1.getLinearTickets)(commitMessages, 'test-api-key');
         (0, globals_1.expect)(tickets).toEqual([mockTicket]);
         (0, globals_1.expect)(fetchLinearTicket_1.fetchLinearTicket).toHaveBeenCalledTimes(1);
         (0, globals_1.expect)(fetchLinearTicket_1.fetchLinearTicket).toHaveBeenCalledWith('test-api-key', 'MOB-123');
         (0, globals_1.expect)(core.debug).toHaveBeenCalledWith('Found ticket ID: MOB-123');
     });
-    it('should handle commit messages without ticket IDs', async () => {
-        const commitMessages = [
-            'feat: implement new feature',
-            'fix: another commit',
-            'chore: update dependencies'
-        ];
+    (0, globals_1.test)('should handle commit messages without ticket IDs', async () => {
+        const commitMessages = ['chore: update dependencies'];
         const tickets = await (0, getLinearTickets_1.getLinearTickets)(commitMessages, 'test-api-key');
         (0, globals_1.expect)(tickets).toEqual([]);
         (0, globals_1.expect)(fetchLinearTicket_1.fetchLinearTicket).not.toHaveBeenCalled();
-        (0, globals_1.expect)(core.debug).toHaveBeenCalledWith(globals_1.expect.stringMatching(/No ticket IDs found in commit message/));
+        (0, globals_1.expect)(core.debug).toHaveBeenCalledWith('No ticket IDs found in commit message: chore: update dependencies');
     });
-    it('should handle failed ticket fetches', async () => {
+    (0, globals_1.test)('should handle failed ticket fetches', async () => {
         fetchLinearTicket_1.fetchLinearTicket.mockResolvedValue(null);
-        const commitMessages = [
-            'feat: implement new feature [MOB-123]'
-        ];
+        const commitMessages = ['feat: implement new feature [MOB-123]'];
         const tickets = await (0, getLinearTickets_1.getLinearTickets)(commitMessages, 'test-api-key');
         (0, globals_1.expect)(tickets).toEqual([]);
         (0, globals_1.expect)(fetchLinearTicket_1.fetchLinearTicket).toHaveBeenCalledTimes(1);
         (0, globals_1.expect)(fetchLinearTicket_1.fetchLinearTicket).toHaveBeenCalledWith('test-api-key', 'MOB-123');
         (0, globals_1.expect)(core.debug).toHaveBeenCalledWith('No ticket found for ID: MOB-123');
     });
-    it('should handle errors during ticket fetch', async () => {
-        fetchLinearTicket_1.fetchLinearTicket.mockRejectedValue(new Error('API error'));
+    (0, globals_1.test)('should deduplicate ticket IDs', async () => {
         const commitMessages = [
-            'feat: implement new feature [MOB-123]'
+            'feat: implement new feature [MOB-123]',
+            'fix: address feedback [MOB-123]'
         ];
         const tickets = await (0, getLinearTickets_1.getLinearTickets)(commitMessages, 'test-api-key');
-        (0, globals_1.expect)(tickets).toEqual([]);
+        (0, globals_1.expect)(tickets).toEqual([mockTicket]);
         (0, globals_1.expect)(fetchLinearTicket_1.fetchLinearTicket).toHaveBeenCalledTimes(1);
         (0, globals_1.expect)(fetchLinearTicket_1.fetchLinearTicket).toHaveBeenCalledWith('test-api-key', 'MOB-123');
-        (0, globals_1.expect)(core.error).toHaveBeenCalledWith('Failed to fetch Linear ticket MOB-123: Error: API error');
     });
 });

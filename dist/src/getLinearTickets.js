@@ -57,7 +57,10 @@ async function getLinearTickets(commitMessages, linearApiKey) {
                     const ticket = await (0, fetchLinearTicket_1.fetchLinearTicket)(linearApiKey, ticketId);
                     if (ticket) {
                         core.debug(`Successfully fetched ticket: ${ticketId}`);
-                        tickets.push(ticket);
+                        tickets.push({
+                            ...ticket,
+                            commits: []
+                        });
                     }
                     else {
                         core.debug(`No ticket found for ID: ${ticketId}`);

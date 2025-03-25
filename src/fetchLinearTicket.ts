@@ -1,26 +1,9 @@
 import * as core from '@actions/core';
-
-interface LinearTicket {
-  id: string;
-  title: string;
-  description: string;
-  state: {
-    name: string;
-  };
-  assignee?: {
-    name: string;
-  };
-  labels: {
-    nodes: Array<{
-      name: string;
-    }>;
-  };
-  url: string;
-}
+import { LinearTicket } from './types';
 
 interface LinearResponse {
   data?: {
-    issue: LinearTicket;
+    issue: Omit<LinearTicket, 'commits'>;
   };
   errors?: Array<{
     message: string;
@@ -30,7 +13,7 @@ interface LinearResponse {
 export async function fetchLinearTicket(
   linearApiKey: string,
   ticketId: string
-): Promise<LinearTicket | null> {
+): Promise<Omit<LinearTicket, 'commits'> | null> {
   try {
     core.debug(`Fetching Linear ticket ${ticketId}`);
 
@@ -46,6 +29,7 @@ export async function fetchLinearTicket(
             issue(id: $id) {
               id
               title
+              description
               state {
                 name
               }

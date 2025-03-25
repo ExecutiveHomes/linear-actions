@@ -40,8 +40,7 @@ Fetches Linear tickets from commits between tags matching a specified pattern.
 
 | Name | Description |
 |------|-------------|
-| `tickets` | Array of Linear ticket objects with details |
-| `relationships` | Array of commit-ticket relationships showing which tickets are linked to each commit |
+| `tickets` | Array of Linear tickets with their associated commits |
 
 Example output:
 ```json
@@ -64,19 +63,11 @@ Example output:
           }
         ]
       },
-      "url": "https://linear.app/org/issue/TICKET-123"
-    }
-  ],
-  "relationships": [
-    {
-      "commit": {
-        "message": "feat: implement new feature [TICKET-123]",
-        "sha": "abc123..."
-      },
-      "tickets": [
+      "url": "https://linear.app/org/issue/TICKET-123",
+      "commits": [
         {
-          "id": "TICKET-123",
-          "url": "https://linear.app/org/issue/TICKET-123"
+          "message": "feat: implement new feature [TICKET-123]",
+          "sha": "abc123..."
         }
       ]
     }
