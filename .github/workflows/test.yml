@@ -41,7 +41,6 @@ jobs:
           action: get-linear-commits
           linear-api-key: ${{ secrets.LINEAR_API_KEY }}
           tag-pattern: "release/*"
-          github-token: ${{ github.token }}
           
       - name: Log Action Output
         run: |

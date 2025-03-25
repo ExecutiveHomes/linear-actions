@@ -12,10 +12,6 @@ inputs:
   tag-pattern:
     description: 'Tag pattern to match commits (e.g. "release/*")'
     required: true
-  github-token:
-    description: 'GitHub token'
-    required: true
-    default: ${{ github.token }}
 
 outputs:
   tickets:

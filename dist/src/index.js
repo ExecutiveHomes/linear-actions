@@ -39,8 +39,8 @@ const github = __importStar(require("@actions/github"));
 const getLinearTickets_1 = require("./getLinearTickets");
 const pre_1 = require("./pre");
 const post_1 = require("./post");
-async function getLinearCommits(linearApiKey, tagPattern, githubToken) {
-    const octokit = github.getOctokit(githubToken);
+async function getLinearCommits(linearApiKey, tagPattern) {
+    const octokit = github.getOctokit(process.env.GITHUB_TOKEN || '');
     // List all tags
     const { data: tags } = await octokit.rest.repos.listTags({
         owner: github.context.repo.owner,
@@ -74,11 +74,10 @@ async function run() {
         await (0, pre_1.pre)();
         const action = core.getInput('action', { required: true });
         const linearApiKey = core.getInput('linear-api-key', { required: true });
-        const githubToken = core.getInput('github-token', { required: true });
         switch (action) {
             case 'get-linear-commits': {
                 const tagPattern = core.getInput('tag-pattern', { required: true });
-                const tickets = await getLinearCommits(linearApiKey, tagPattern, githubToken);
+                const tickets = await getLinearCommits(linearApiKey, tagPattern);
                 core.setOutput('tickets', JSON.stringify(tickets));
                 break;
             }
