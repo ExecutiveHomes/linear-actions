@@ -1,5 +1,6 @@
 import * as core from '@actions/core';
 import * as github from '@actions/github';
+import * as exec from '@actions/exec';
 import { fetchLinearTicket } from './fetchLinearTicket';
 import { pre } from './pre';
 import { post } from './post';
@@ -16,23 +17,30 @@ export async function getLinearCommits(
 
   const octokit = github.getOctokit(githubToken);
 
-  // List all tags (GitHub returns them in reverse chronological order)
-  const { data: tags } = await octokit.rest.repos.listTags({
-    owner: github.context.repo.owner,
-    repo: github.context.repo.repo,
+  // Get tags sorted by creation date using git command
+  let tagsOutput = '';
+  await exec.exec('git', ['for-each-ref', '--sort=-creatordate', 'refs/tags/', '--format=%(refname:short)'], {
+    listeners: {
+      stdout: (data: Buffer) => {
+        tagsOutput += data.toString();
+      }
+    }
   });
 
+  // Parse the tags output
+  const tags = tagsOutput.trim().split('\n');
+  
   core.info(`Found ${tags.length} total tags`);
   core.info('All tags (in chronological order, newest first):');
   tags.forEach(tag => {
-    core.info(`- ${tag.name}`);
+    core.info(`- ${tag}`);
   });
 
   // Find the first tag that matches our pattern
   const pattern = new RegExp(tagPattern.replace('*', '.*'));
   const latestMatchingTag = tags.find(tag => {
-    const matches = pattern.test(tag.name);
-    core.info(`Tag ${tag.name} ${matches ? 'matches' : 'does not match'} pattern ${tagPattern}`);
+    const matches = pattern.test(tag);
+    core.info(`Tag ${tag} ${matches ? 'matches' : 'does not match'} pattern ${tagPattern}`);
     return matches;
   });
 
@@ -41,7 +49,7 @@ export async function getLinearCommits(
     return { commits: [] };
   }
 
-  const base = latestMatchingTag.name;
+  const base = latestMatchingTag;
   const head = 'HEAD';
 
   core.info(`Using most recent matching tag: ${base}`);
