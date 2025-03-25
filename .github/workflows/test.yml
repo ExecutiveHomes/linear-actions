@@ -42,7 +42,7 @@ jobs:
         with:
           action: get-linear-commits
           linear-api-key: ${{ secrets.LINEAR_API_KEY }}
-          tag-pattern: "release/**/*"
+          tag-pattern: "release/*"
           
       - name: Log Action Output
         run: |
