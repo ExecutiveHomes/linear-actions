@@ -46,5 +46,5 @@ jobs:
           
       - name: Log Action Output
         run: |
-          echo "Linear Tickets:"
-          echo '${{ steps.linear_commits.outputs.tickets }}' 
+          echo "Commits with Linear Tickets:"
+          echo '${{ steps.linear_commits.outputs.commits }}' 
