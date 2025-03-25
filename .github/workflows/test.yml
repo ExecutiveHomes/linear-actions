@@ -35,6 +35,8 @@ jobs:
       - name: Test getLinearCommits Action
         id: linear_commits
         uses: ./
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         with:
           action: get-linear-commits
           linear-api-key: ${{ secrets.LINEAR_API_KEY }}
