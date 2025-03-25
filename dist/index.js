@@ -144,14 +144,30 @@ const github = __importStar(__nccwpck_require__(3228));
 const fetchLinearTicket_1 = __nccwpck_require__(5541);
 const pre_1 = __nccwpck_require__(6425);
 const post_1 = __nccwpck_require__(9548);
+function isSemVer(version) {
+    return /\d+\.\d+\.\d+/.test(version);
+}
 function compareVersions(a, b) {
     // Extract version numbers from tags
     const getVersion = (tag) => {
-        const match = tag.match(/\d+(\.\d+)*|\d+/);
+        // Try to find a semver pattern first
+        const semverMatch = tag.match(/\d+\.\d+\.\d+|\d+\.\d+/);
+        if (semverMatch) {
+            return semverMatch[0];
+        }
+        // Fall back to any number
+        const match = tag.match(/\d+/);
         return match ? match[0] : '0';
     };
     const versionA = getVersion(a);
     const versionB = getVersion(b);
+    // Prioritize semver format
+    const isASemVer = isSemVer(versionA);
+    const isBSemVer = isSemVer(versionB);
+    if (isASemVer && !isBSemVer)
+        return -1; // a comes first
+    if (!isASemVer && isBSemVer)
+        return 1; // b comes first
     // Split version strings into parts
     const partsA = versionA.split('.').map(Number);
     const partsB = versionB.split('.').map(Number);
