@@ -7,9 +7,22 @@ import { LinearTicket, GitHubTag, GitHubCommit } from './types';
 
 export async function getLinearCommits(
   linearApiKey: string,
-  tagPattern: string,
-  githubToken: string
+  tagPattern: string
 ): Promise<LinearTicket[]> {
+  // Check if we're running in GitHub Actions
+  const isGitHubAction = process.env.GITHUB_ACTIONS === 'true';
+  
+  if (!isGitHubAction) {
+    // If running locally, just return empty array for testing
+    core.info('Running locally - skipping GitHub API calls');
+    return [];
+  }
+
+  const githubToken = process.env.GITHUB_TOKEN;
+  if (!githubToken) {
+    throw new Error('GITHUB_TOKEN environment variable is required when running in GitHub Actions');
+  }
+
   const octokit = github.getOctokit(githubToken);
 
   // List all tags
@@ -51,19 +64,13 @@ async function run(): Promise<void> {
   try {
     await pre();
 
-    const githubToken = process.env.GITHUB_TOKEN;
-    
-    if (!githubToken) {
-      throw new Error('GITHUB_TOKEN environment variable is required');
-    }
-
     const action = core.getInput('action', { required: true });
     const linearApiKey = core.getInput('linear-api-key', { required: true });
 
     switch (action) {
       case 'get-linear-commits': {
         const tagPattern = core.getInput('tag-pattern', { required: true });
-        const tickets = await getLinearCommits(linearApiKey, tagPattern, githubToken);
+        const tickets = await getLinearCommits(linearApiKey, tagPattern);
         core.setOutput('tickets', JSON.stringify(tickets));
         break;
       }
