@@ -36,7 +36,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.getLinearCommits = getLinearCommits;
 const core = __importStar(require("@actions/core"));
 const github = __importStar(require("@actions/github"));
-const getLinearTickets_1 = require("./getLinearTickets");
+const fetchLinearTicket_1 = require("./fetchLinearTicket");
 const pre_1 = require("./pre");
 const post_1 = require("./post");
 async function getLinearCommits(linearApiKey, tagPattern) {
@@ -65,47 +65,45 @@ async function getLinearCommits(linearApiKey, tagPattern) {
     matchingTags.forEach(tag => core.info(`- ${tag.name}`));
     if (matchingTags.length === 0) {
         core.info('No matching tags found');
-        return { tickets: [] };
+        return { commits: [] };
     }
     // Always compare most recent tag against HEAD
     const base = matchingTags[0].name;
     const head = 'HEAD';
     core.info(`Comparing ${base}...${head}`);
     // Get commits between the base and head
-    const { data: commits } = await octokit.rest.repos.compareCommits({
+    const { data: comparison } = await octokit.rest.repos.compareCommits({
         owner: github.context.repo.owner,
         repo: github.context.repo.repo,
         base,
         head,
     });
-    // Extract commit messages
-    const commitMessages = commits.commits.map(commit => commit.commit.message);
-    core.info('Found commit messages:');
-    commitMessages.forEach(msg => core.info(`- ${msg}`));
-    // Get Linear tickets from commit messages
-    const tickets = await (0, getLinearTickets_1.getLinearTickets)(commitMessages, linearApiKey);
-    // Add commits to each ticket
-    const ticketsWithCommits = tickets.map(ticket => {
-        const ticketCommits = commits.commits.filter(commit => {
-            const matches = commit.commit.message.match(/(?:\[)?([A-Z]+-\d+)(?:\])?/g);
-            if (!matches)
-                return false;
-            return matches.some(match => match.replace(/[\[\]]/g, '') === ticket.id);
-        }).map(commit => ({
-            message: commit.commit.message,
-            sha: commit.sha
-        }));
-        return {
-            ...ticket,
-            commits: ticketCommits
-        };
-    });
-    core.info(`Found ${ticketsWithCommits.length} Linear tickets`);
-    if (ticketsWithCommits.length > 0) {
-        core.info('Tickets found:');
-        ticketsWithCommits.forEach(ticket => core.info(`- ${ticket.id}: ${ticket.title}`));
+    const commitsWithTickets = [];
+    // Process each commit
+    for (const commit of comparison.commits) {
+        const message = commit.commit.message;
+        const matches = message.match(/(?:\[)?([A-Z]+-\d+)(?:\])?/g);
+        let ticket = null;
+        if (matches) {
+            // Get the first ticket ID (in case there are multiple)
+            const ticketId = matches[0].replace(/[\[\]]/g, '');
+            core.debug(`Found ticket ID in commit ${commit.sha}: ${ticketId}`);
+            ticket = await (0, fetchLinearTicket_1.fetchLinearTicket)(linearApiKey, ticketId);
+        }
+        commitsWithTickets.push({
+            message,
+            sha: commit.sha,
+            ticket
+        });
     }
-    return { tickets: ticketsWithCommits };
+    core.info(`Processed ${commitsWithTickets.length} commits`);
+    commitsWithTickets.forEach(commit => {
+        core.info(`- ${commit.sha.substring(0, 7)}: ${commit.message}`);
+        if (commit.ticket) {
+            core.info(`  Linked to ticket: ${commit.ticket.id} - ${commit.ticket.title}`);
+        }
+    });
+    return { commits: commitsWithTickets };
 }
 async function run() {
     try {
@@ -117,7 +115,7 @@ async function run() {
                 const tagPattern = core.getInput('tag-pattern', { required: true });
                 core.info(`Using tag pattern: ${tagPattern}`);
                 const result = await getLinearCommits(linearApiKey, tagPattern);
-                core.setOutput('tickets', JSON.stringify(result.tickets));
+                core.setOutput('commits', JSON.stringify(result.commits));
                 break;
             }
             default:

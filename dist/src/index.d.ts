@@ -1,4 +1,4 @@
-import { LinearTicket } from './types';
+import { CommitWithTicket } from './types';
 export declare function getLinearCommits(linearApiKey: string, tagPattern: string): Promise<{
-    tickets: LinearTicket[];
+    commits: CommitWithTicket[];
 }>;

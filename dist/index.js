@@ -100,90 +100,6 @@ async function fetchLinearTicket(linearApiKey, ticketId) {
 
 /***/ }),
 
-/***/ 3428:
-/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
-
-"use strict";
-
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || (function () {
-    var ownKeys = function(o) {
-        ownKeys = Object.getOwnPropertyNames || function (o) {
-            var ar = [];
-            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-            return ar;
-        };
-        return ownKeys(o);
-    };
-    return function (mod) {
-        if (mod && mod.__esModule) return mod;
-        var result = {};
-        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-        __setModuleDefault(result, mod);
-        return result;
-    };
-})();
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.getLinearTickets = getLinearTickets;
-const core = __importStar(__nccwpck_require__(7484));
-const fetchLinearTicket_1 = __nccwpck_require__(5541);
-async function getLinearTickets(commitMessages, linearApiKey) {
-    const tickets = [];
-    const ticketIds = new Set();
-    // Process each commit
-    for (const message of commitMessages) {
-        // Look for Linear ticket IDs in the format MOB-123 or [MOB-123]
-        const matches = message.match(/(?:\[)?([A-Z]+-\d+)(?:\])?/g);
-        if (!matches) {
-            core.debug(`No ticket IDs found in commit message: ${message}`);
-            continue;
-        }
-        for (const match of matches) {
-            // Remove brackets if they exist
-            const ticketId = match.replace(/[\[\]]/g, '');
-            core.debug(`Found ticket ID: ${ticketId}`);
-            if (!ticketIds.has(ticketId)) {
-                ticketIds.add(ticketId);
-                try {
-                    const ticket = await (0, fetchLinearTicket_1.fetchLinearTicket)(linearApiKey, ticketId);
-                    if (ticket) {
-                        core.debug(`Successfully fetched ticket: ${ticketId}`);
-                        tickets.push({
-                            ...ticket,
-                            commits: []
-                        });
-                    }
-                    else {
-                        core.debug(`No ticket found for ID: ${ticketId}`);
-                    }
-                }
-                catch (error) {
-                    core.error(`Failed to fetch Linear ticket ${ticketId}: ${error}`);
-                }
-            }
-        }
-    }
-    return tickets;
-}
-
-
-/***/ }),
-
 /***/ 4584:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
@@ -226,7 +142,7 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.getLinearCommits = getLinearCommits;
 const core = __importStar(__nccwpck_require__(7484));
 const github = __importStar(__nccwpck_require__(3228));
-const getLinearTickets_1 = __nccwpck_require__(3428);
+const fetchLinearTicket_1 = __nccwpck_require__(5541);
 const pre_1 = __nccwpck_require__(6425);
 const post_1 = __nccwpck_require__(9548);
 async function getLinearCommits(linearApiKey, tagPattern) {
@@ -255,47 +171,45 @@ async function getLinearCommits(linearApiKey, tagPattern) {
     matchingTags.forEach(tag => core.info(`- ${tag.name}`));
     if (matchingTags.length === 0) {
         core.info('No matching tags found');
-        return { tickets: [] };
+        return { commits: [] };
     }
     // Always compare most recent tag against HEAD
     const base = matchingTags[0].name;
     const head = 'HEAD';
     core.info(`Comparing ${base}...${head}`);
     // Get commits between the base and head
-    const { data: commits } = await octokit.rest.repos.compareCommits({
+    const { data: comparison } = await octokit.rest.repos.compareCommits({
         owner: github.context.repo.owner,
         repo: github.context.repo.repo,
         base,
         head,
     });
-    // Extract commit messages
-    const commitMessages = commits.commits.map(commit => commit.commit.message);
-    core.info('Found commit messages:');
-    commitMessages.forEach(msg => core.info(`- ${msg}`));
-    // Get Linear tickets from commit messages
-    const tickets = await (0, getLinearTickets_1.getLinearTickets)(commitMessages, linearApiKey);
-    // Add commits to each ticket
-    const ticketsWithCommits = tickets.map(ticket => {
-        const ticketCommits = commits.commits.filter(commit => {
-            const matches = commit.commit.message.match(/(?:\[)?([A-Z]+-\d+)(?:\])?/g);
-            if (!matches)
-                return false;
-            return matches.some(match => match.replace(/[\[\]]/g, '') === ticket.id);
-        }).map(commit => ({
-            message: commit.commit.message,
-            sha: commit.sha
-        }));
-        return {
-            ...ticket,
-            commits: ticketCommits
-        };
-    });
-    core.info(`Found ${ticketsWithCommits.length} Linear tickets`);
-    if (ticketsWithCommits.length > 0) {
-        core.info('Tickets found:');
-        ticketsWithCommits.forEach(ticket => core.info(`- ${ticket.id}: ${ticket.title}`));
+    const commitsWithTickets = [];
+    // Process each commit
+    for (const commit of comparison.commits) {
+        const message = commit.commit.message;
+        const matches = message.match(/(?:\[)?([A-Z]+-\d+)(?:\])?/g);
+        let ticket = null;
+        if (matches) {
+            // Get the first ticket ID (in case there are multiple)
+            const ticketId = matches[0].replace(/[\[\]]/g, '');
+            core.debug(`Found ticket ID in commit ${commit.sha}: ${ticketId}`);
+            ticket = await (0, fetchLinearTicket_1.fetchLinearTicket)(linearApiKey, ticketId);
+        }
+        commitsWithTickets.push({
+            message,
+            sha: commit.sha,
+            ticket
+        });
     }
-    return { tickets: ticketsWithCommits };
+    core.info(`Processed ${commitsWithTickets.length} commits`);
+    commitsWithTickets.forEach(commit => {
+        core.info(`- ${commit.sha.substring(0, 7)}: ${commit.message}`);
+        if (commit.ticket) {
+            core.info(`  Linked to ticket: ${commit.ticket.id} - ${commit.ticket.title}`);
+        }
+    });
+    return { commits: commitsWithTickets };
 }
 async function run() {
     try {
@@ -307,7 +221,7 @@ async function run() {
                 const tagPattern = core.getInput('tag-pattern', { required: true });
                 core.info(`Using tag pattern: ${tagPattern}`);
                 const result = await getLinearCommits(linearApiKey, tagPattern);
-                core.setOutput('tickets', JSON.stringify(result.tickets));
+                core.setOutput('commits', JSON.stringify(result.commits));
                 break;
             }
             default:

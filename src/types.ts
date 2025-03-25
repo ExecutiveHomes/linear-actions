@@ -14,26 +14,12 @@ export interface LinearTicket {
     }>;
   };
   url: string;
-  commits: Array<{
-    message: string;
-    sha: string;
-  }>;
 }
 
-export interface CommitTicket {
+export interface CommitWithTicket {
   message: string;
-  ticket: string; // Linear ticket URL
-}
-
-export interface CommitTicketRelationship {
-  commit: {
-    message: string;
-    sha: string;
-  };
-  tickets: Array<{
-    id: string;
-    url: string;
-  }>;
+  sha: string;
+  ticket: LinearTicket | null;
 }
 
 export interface ActionInputs {

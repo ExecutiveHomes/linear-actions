@@ -26,7 +26,7 @@ Simply reference the action in your workflow:
 
 ### Get Linear Commits
 
-Fetches Linear tickets from commits between tags matching a specified pattern.
+Fetches commits between tags matching a specified pattern and links them to Linear tickets when found.
 
 #### Inputs
 
@@ -40,36 +40,39 @@ Fetches Linear tickets from commits between tags matching a specified pattern.
 
 | Name | Description |
 |------|-------------|
-| `tickets` | Array of Linear tickets with their associated commits |
+| `commits` | Array of commits with their associated Linear tickets (if found) |
 
 Example output:
 ```json
 {
-  "tickets": [
+  "commits": [
     {
-      "id": "TICKET-123",
-      "title": "Add new feature",
-      "description": "Feature description",
-      "state": {
-        "name": "Done"
-      },
-      "assignee": {
-        "name": "John Doe"
-      },
-      "labels": {
-        "nodes": [
-          {
-            "name": "feature"
-          }
-        ]
-      },
-      "url": "https://linear.app/org/issue/TICKET-123",
-      "commits": [
-        {
-          "message": "feat: implement new feature [TICKET-123]",
-          "sha": "abc123..."
-        }
-      ]
+      "message": "feat: implement new feature [TICKET-123]",
+      "sha": "abc123...",
+      "ticket": {
+        "id": "TICKET-123",
+        "title": "Add new feature",
+        "description": "Feature description",
+        "state": {
+          "name": "Done"
+        },
+        "assignee": {
+          "name": "John Doe"
+        },
+        "labels": {
+          "nodes": [
+            {
+              "name": "feature"
+            }
+          ]
+        },
+        "url": "https://linear.app/org/issue/TICKET-123"
+      }
+    },
+    {
+      "message": "chore: update dependencies",
+      "sha": "def456...",
+      "ticket": null
     }
   ]
 }

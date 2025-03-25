@@ -1,14 +1,14 @@
 import * as core from '@actions/core';
 import * as github from '@actions/github';
-import { getLinearTickets } from './getLinearTickets';
+import { fetchLinearTicket } from './fetchLinearTicket';
 import { pre } from './pre';
 import { post } from './post';
-import { LinearTicket } from './types';
+import { CommitWithTicket } from './types';
 
 export async function getLinearCommits(
   linearApiKey: string,
   tagPattern: string
-): Promise<{ tickets: LinearTicket[] }> {
+): Promise<{ commits: CommitWithTicket[] }> {
   const githubToken = process.env.GITHUB_TOKEN;
   if (!githubToken) {
     throw new Error('GITHUB_TOKEN environment variable is required when running in GitHub Actions');
@@ -40,7 +40,7 @@ export async function getLinearCommits(
 
   if (matchingTags.length === 0) {
     core.info('No matching tags found');
-    return { tickets: [] };
+    return { commits: [] };
   }
 
   // Always compare most recent tag against HEAD
@@ -50,46 +50,44 @@ export async function getLinearCommits(
   core.info(`Comparing ${base}...${head}`);
 
   // Get commits between the base and head
-  const { data: commits } = await octokit.rest.repos.compareCommits({
+  const { data: comparison } = await octokit.rest.repos.compareCommits({
     owner: github.context.repo.owner,
     repo: github.context.repo.repo,
     base,
     head,
   });
 
-  // Extract commit messages
-  const commitMessages = commits.commits.map(commit => commit.commit.message);
-  
-  core.info('Found commit messages:');
-  commitMessages.forEach(msg => core.info(`- ${msg}`));
+  const commitsWithTickets: CommitWithTicket[] = [];
 
-  // Get Linear tickets from commit messages
-  const tickets = await getLinearTickets(commitMessages, linearApiKey);
-  
-  // Add commits to each ticket
-  const ticketsWithCommits = tickets.map(ticket => {
-    const ticketCommits = commits.commits.filter(commit => {
-      const matches = commit.commit.message.match(/(?:\[)?([A-Z]+-\d+)(?:\])?/g);
-      if (!matches) return false;
-      return matches.some(match => match.replace(/[\[\]]/g, '') === ticket.id);
-    }).map(commit => ({
-      message: commit.commit.message,
-      sha: commit.sha
-    }));
+  // Process each commit
+  for (const commit of comparison.commits) {
+    const message = commit.commit.message;
+    const matches = message.match(/(?:\[)?([A-Z]+-\d+)(?:\])?/g);
+    
+    let ticket = null;
+    if (matches) {
+      // Get the first ticket ID (in case there are multiple)
+      const ticketId = matches[0].replace(/[\[\]]/g, '');
+      core.debug(`Found ticket ID in commit ${commit.sha}: ${ticketId}`);
+      ticket = await fetchLinearTicket(linearApiKey, ticketId);
+    }
 
-    return {
-      ...ticket,
-      commits: ticketCommits
-    };
-  });
-  
-  core.info(`Found ${ticketsWithCommits.length} Linear tickets`);
-  if (ticketsWithCommits.length > 0) {
-    core.info('Tickets found:');
-    ticketsWithCommits.forEach(ticket => core.info(`- ${ticket.id}: ${ticket.title}`));
+    commitsWithTickets.push({
+      message,
+      sha: commit.sha,
+      ticket
+    });
   }
 
-  return { tickets: ticketsWithCommits };
+  core.info(`Processed ${commitsWithTickets.length} commits`);
+  commitsWithTickets.forEach(commit => {
+    core.info(`- ${commit.sha.substring(0, 7)}: ${commit.message}`);
+    if (commit.ticket) {
+      core.info(`  Linked to ticket: ${commit.ticket.id} - ${commit.ticket.title}`);
+    }
+  });
+
+  return { commits: commitsWithTickets };
 }
 
 async function run(): Promise<void> {
@@ -104,7 +102,7 @@ async function run(): Promise<void> {
         const tagPattern = core.getInput('tag-pattern', { required: true });
         core.info(`Using tag pattern: ${tagPattern}`);
         const result = await getLinearCommits(linearApiKey, tagPattern);
-        core.setOutput('tickets', JSON.stringify(result.tickets));
+        core.setOutput('commits', JSON.stringify(result.commits));
         break;
       }
       default:
