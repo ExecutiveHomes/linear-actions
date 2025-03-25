@@ -59,7 +59,9 @@ export async function getLinearCommits(
 
   // Process each commit
   for (const commit of comparison.commits) {
-    const message = commit.commit.message;
+    // Get only the first line of the commit message
+    const fullMessage = commit.commit.message;
+    const message = fullMessage.split('\n')[0];
     const matches = message.match(/(?:\[)?([A-Z]+-\d+)(?:\])?/g);
     
     let ticket = null;
@@ -85,7 +87,8 @@ export async function getLinearCommits(
     }
   });
 
-  return { commits: commitsWithTickets };
+  // Reverse the array to get commits in chronological order (oldest first)
+  return { commits: commitsWithTickets.reverse() };
 }
 
 async function run(): Promise<void> {
