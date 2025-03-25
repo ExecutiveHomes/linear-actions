@@ -55,34 +55,54 @@ export async function getLinearCommits(
   core.info(`Using most recent matching tag: ${base}`);
   core.info(`Comparing ${base}...${head}`);
 
-  // Get commits between the base and head
-  const { data: comparison } = await octokit.rest.repos.compareCommits({
-    owner: github.context.repo.owner,
-    repo: github.context.repo.repo,
-    base,
-    head,
+  // Get commits between the base and head using git command
+  let commitsOutput = '';
+  await exec.exec('git', ['log', '--format=%H%n%s', `${base}..${head}`], {
+    listeners: {
+      stdout: (data: Buffer) => {
+        commitsOutput += data.toString();
+      }
+    }
   });
 
-  const commitsWithTickets: CommitWithTicket[] = [];
+  // Debug raw output
+  core.info('Raw commits output:');
+  core.info('---START---');
+  core.info(commitsOutput);
+  core.info('---END---');
+  core.info(`Raw output length: ${commitsOutput.length}`);
 
-  // Process each commit
-  for (const commit of comparison.commits) {
-    // Get only the first line of the commit message
-    const fullMessage = commit.commit.message;
-    const message = fullMessage.split('\n')[0];
+  const commitsWithTickets: CommitWithTicket[] = [];
+  
+  // Process the commits output
+  const commitLines = commitsOutput.trim().split('\n');
+  core.info(`Number of lines after split: ${commitLines.length}`);
+  core.info('Lines after split:');
+  commitLines.forEach((line, i) => {
+    core.info(`Line ${i}: "${line}"`);
+  });
+
+  for (let i = 0; i < commitLines.length; i += 2) {
+    const sha = commitLines[i];
+    const message = commitLines[i + 1];
+    
+    core.info(`Processing commit pair ${i/2 + 1}:`);
+    core.info(`  SHA: ${sha}`);
+    core.info(`  Message: ${message}`);
+    
     const matches = message.match(/(?:\[)?([A-Z]+-\d+)(?:\])?/g);
     
     let ticket = null;
     if (matches) {
       // Get the first ticket ID (in case there are multiple)
       const ticketId = matches[0].replace(/[\[\]]/g, '');
-      core.debug(`Found ticket ID in commit ${commit.sha}: ${ticketId}`);
+      core.debug(`Found ticket ID in commit ${sha}: ${ticketId}`);
       ticket = await fetchLinearTicket(linearApiKey, ticketId);
     }
 
     commitsWithTickets.push({
       message,
-      sha: commit.sha,
+      sha,
       ticket
     });
   }
