@@ -219,7 +219,11 @@ const getLinearTickets_1 = __nccwpck_require__(3428);
 const pre_1 = __nccwpck_require__(6425);
 const post_1 = __nccwpck_require__(9548);
 async function getLinearCommits(linearApiKey, tagPattern) {
-    const octokit = github.getOctokit(process.env.GITHUB_TOKEN || '');
+    const githubToken = process.env.GITHUB_TOKEN;
+    if (!githubToken) {
+        throw new Error('GITHUB_TOKEN environment variable is required');
+    }
+    const octokit = github.getOctokit(githubToken);
     // List all tags
     const { data: tags } = await octokit.rest.repos.listTags({
         owner: github.context.repo.owner,

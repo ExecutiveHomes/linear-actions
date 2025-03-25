@@ -40,7 +40,11 @@ const getLinearTickets_1 = require("./getLinearTickets");
 const pre_1 = require("./pre");
 const post_1 = require("./post");
 async function getLinearCommits(linearApiKey, tagPattern) {
-    const octokit = github.getOctokit(process.env.GITHUB_TOKEN || '');
+    const githubToken = process.env.GITHUB_TOKEN;
+    if (!githubToken) {
+        throw new Error('GITHUB_TOKEN environment variable is required');
+    }
+    const octokit = github.getOctokit(githubToken);
     // List all tags
     const { data: tags } = await octokit.rest.repos.listTags({
         owner: github.context.repo.owner,
