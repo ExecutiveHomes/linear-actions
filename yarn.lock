@@ -479,6 +479,7 @@ __metadata:
   resolution: "@executivehomes/linear-actions@workspace:."
   dependencies:
     "@actions/core": "npm:^1.11.1"
+    "@actions/exec": "npm:^1.1.1"
     "@actions/github": "npm:^6.0.0"
     "@jest/globals": "npm:^29.7.0"
     "@types/github": "npm:^7.1.0"
