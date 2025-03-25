@@ -52,7 +52,7 @@ describe('fetchLinearTicket', () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer test-api-key'
+          'Authorization': 'test-api-key'
         },
         body: expect.stringContaining('TEST-123')
       })
