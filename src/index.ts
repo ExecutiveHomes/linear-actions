@@ -7,9 +7,10 @@ import { LinearTicket, GitHubTag, GitHubCommit } from './types';
 
 export async function getLinearCommits(
   linearApiKey: string,
-  tagPattern: string
+  tagPattern: string,
+  githubToken: string
 ): Promise<LinearTicket[]> {
-  const octokit = github.getOctokit(process.env.GITHUB_TOKEN || '');
+  const octokit = github.getOctokit(githubToken);
 
   // List all tags
   const { data: tags } = await octokit.rest.repos.listTags({
@@ -52,11 +53,12 @@ async function run(): Promise<void> {
 
     const action = core.getInput('action', { required: true });
     const linearApiKey = core.getInput('linear-api-key', { required: true });
+    const githubToken = core.getInput('github-token', { required: true });
 
     switch (action) {
       case 'get-linear-commits': {
         const tagPattern = core.getInput('tag-pattern', { required: true });
-        const tickets = await getLinearCommits(linearApiKey, tagPattern);
+        const tickets = await getLinearCommits(linearApiKey, tagPattern, githubToken);
         core.setOutput('tickets', JSON.stringify(tickets));
         break;
       }

@@ -31,7 +31,8 @@ jobs:
         
       - name: Debug Linear API Key
         run: |
-          echo "LINEAR_API_KEY ${{ secrets.LINEAR_API_KEY }}"
+          echo "LINEAR_API_KEY exists: ${{ secrets.LINEAR_API_KEY != '' }}"
+          echo "LINEAR_API_KEY length: ${{ length(secrets.LINEAR_API_KEY) }}"
         
       - name: Test getLinearCommits Action
         id: linear_commits
@@ -40,6 +41,7 @@ jobs:
           action: get-linear-commits
           linear-api-key: ${{ secrets.LINEAR_API_KEY }}
           tag-pattern: "release/*"
+          github-token: ${{ github.token }}
           
       - name: Log Action Output
         run: |
