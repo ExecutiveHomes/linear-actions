@@ -1,1 +1,1 @@
-export declare function getCommits(lastTagPattern: string): string[];
+export declare function getCommits(lastTagPattern: string): Promise<string[]>;

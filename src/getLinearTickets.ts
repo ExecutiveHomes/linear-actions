@@ -1,56 +1,51 @@
+import * as core from '@actions/core';
 import { fetchLinearTicket } from './fetchLinearTicket';
-import { logger } from './logger';
-import type { LinearTicket } from './types';
 
-export type CommitTicketMap = Map<string, LinearTicket | null>;
+interface LinearTicket {
+  id: string;
+  title: string;
+  description: string;
+  state: {
+    name: string;
+  };
+  assignee?: {
+    name: string;
+  };
+  labels: {
+    nodes: Array<{
+      name: string;
+    }>;
+  };
+}
 
-export async function getLinearTickets(commits: string[], board: string = 'MOB'): Promise<CommitTicketMap> {
-  try {
-    const commitTicketMap = new Map<string, LinearTicket | null>();
-    const ticketIds = new Set<string>();
+export async function getLinearTickets(
+  commitMessages: string[],
+  linearApiKey: string
+): Promise<LinearTicket[]> {
+  const tickets: LinearTicket[] = [];
+  const ticketIds = new Set<string>();
 
-    // First pass: extract ticket IDs and create initial map
-    for (const commit of commits) {
-      // Look for ticket IDs in various formats:
-      // 1. (MOB-123)
-      // 2. MOB-123:
-      // 3. #MOB-123
-      const matches = commit.match(/(?:\(|^|#)([A-Z]+-\d+)(?:\)|:|$)/);
-      if (matches) {
-        const ticketId = matches[1];
-        // Only add tickets that match the board prefix
-        if (ticketId.startsWith(board)) {
-          ticketIds.add(ticketId);
-          commitTicketMap.set(commit, null); // Will be updated with ticket details
-        } else {
-          commitTicketMap.set(commit, null); // No matching ticket found
-        }
-      } else {
-        commitTicketMap.set(commit, null); // No ticket found
-      }
-    }
+  // Process each commit
+  for (const message of commitMessages) {
+    // Look for Linear ticket IDs in the format [ABC-123]
+    const matches = message.match(/\[([A-Z]+-\d+)\]/g);
+    if (!matches) continue;
 
-    // Second pass: fetch ticket details
-    for (const ticketId of ticketIds) {
-      try {
-        const ticket = await fetchLinearTicket(process.env.LINEAR_API_KEY!, ticketId);
-        if (ticket) {
-          // Update all commits that reference this ticket
-          for (const [commit] of commitTicketMap) {
-            if (commit.includes(ticketId)) {
-              commitTicketMap.set(commit, ticket);
-              break;
-            }
+    for (const match of matches) {
+      const ticketId = match.slice(1, -1); // Remove brackets
+      if (!ticketIds.has(ticketId)) {
+        ticketIds.add(ticketId);
+        try {
+          const ticket = await fetchLinearTicket(linearApiKey, ticketId);
+          if (ticket) {
+            tickets.push(ticket);
           }
+        } catch (error) {
+          core.error(`Failed to fetch Linear ticket ${ticketId}: ${error}`);
         }
-      } catch (error) {
-        logger.error(`Error fetching ticket ${ticketId}:`, error);
       }
     }
-
-    return commitTicketMap;
-  } catch (error) {
-    logger.error('Error getting Linear tickets:', error);
-    throw error;
   }
+
+  return tickets;
 } 

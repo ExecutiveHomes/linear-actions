@@ -1,0 +1,26 @@
+name: 'Get Linear Tickets'
+description: 'Fetches Linear tickets from commits matching a tag pattern'
+author: 'Luke Farrell'
+
+inputs:
+  linear-api-key:
+    description: 'Linear API Key'
+    required: true
+  tag-pattern:
+    description: 'Tag pattern to match commits (e.g., "release/*")'
+    required: true
+
+outputs:
+  tickets:
+    description: 'Array of objects containing commit messages and Linear ticket links'
+    value: ${{ steps.get_tickets.outputs.tickets }}
+
+runs:
+  using: 'node20'
+  main: 'dist/src/index.js'
+  pre: 'dist/src/pre.js'
+  post: 'dist/src/post.js'
+
+branding:
+  icon: 'ticket'
+  color: 'blue' 

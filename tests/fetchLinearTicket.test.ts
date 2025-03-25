@@ -1,93 +1,155 @@
-import fetch, { Response } from 'node-fetch';
-
+import { describe, expect, jest, test } from '@jest/globals';
+import * as github from '@actions/github';
+import * as core from '@actions/core';
 import { fetchLinearTicket } from '../src/fetchLinearTicket';
-import type { LinearTicket } from '../src/types';
 
-// Mock node-fetch
-jest.mock('node-fetch');
-const mockedFetch = fetch as jest.MockedFunction<typeof fetch>;
+// Mock the GitHub module
+jest.mock('@actions/github', () => ({
+  getOctokit: jest.fn()
+}));
+
+// Mock the core module
+jest.mock('@actions/core', () => ({
+  getInput: jest.fn(),
+  debug: jest.fn(),
+  setFailed: jest.fn()
+}));
+
+// Define the type for the mock request function
+type MockRequestResponse = {
+  status: number;
+  url: string;
+  headers: Record<string, string>;
+  data: {
+    data?: {
+      issue?: {
+        id: string;
+        title: string;
+        description: string;
+        state: {
+          name: string;
+        };
+        assignee?: {
+          name: string;
+        };
+        labels: {
+          nodes: Array<{
+            name: string;
+          }>;
+        };
+      } | null;
+    };
+    errors?: Array<{
+      message: string;
+    }>;
+  };
+};
 
 describe('fetchLinearTicket', () => {
+  let mockRequest: jest.Mock;
+  let mockGetOctokit: jest.Mock;
+
   beforeEach(() => {
+    // Reset all mocks before each test
     jest.clearAllMocks();
+
+    // Mock getInput to return a test API key
+    (core.getInput as jest.Mock).mockReturnValue('test-api-key');
+
+    // Create a mock request function
+    mockRequest = jest.fn();
+
+    // Create a mock getOctokit function that returns an object with a request method
+    mockGetOctokit = jest.fn().mockReturnValue({
+      request: mockRequest
+    });
+
+    // Replace the real getOctokit with our mock
+    (github.getOctokit as jest.Mock).mockImplementation(mockGetOctokit);
   });
 
-  it('should fetch ticket details successfully', async () => {
-    const mockTicket: LinearTicket = {
+  it('should fetch a Linear ticket successfully', async () => {
+    const mockTicket = {
+      id: '123',
       title: 'Test Ticket',
       description: 'Test Description',
-      url: 'https://linear.app/test'
+      state: { name: 'In Progress' },
+      assignee: { name: 'John Doe' },
+      labels: { nodes: [{ name: 'bug' }] }
     };
 
-    const mockResponse = {
+    mockRequest.mockImplementation(() => Promise.resolve({
+      status: 200,
+      url: 'https://api.linear.app/graphql',
+      headers: {},
       data: {
-        issue: {
-          title: mockTicket.title,
-          description: mockTicket.description,
-          url: mockTicket.url
+        data: {
+          issue: mockTicket
         }
       }
-    };
+    }));
 
-    mockedFetch.mockResolvedValueOnce({
-      ok: true,
-      status: 200,
-      json: () => Promise.resolve(mockResponse)
-    } as Response);
+    const result = await fetchLinearTicket('test-api-key', 'TEST-123');
 
-    const result = await fetchLinearTicket('test-key', 'ABC-123');
     expect(result).toEqual(mockTicket);
-    expect(mockedFetch).toHaveBeenCalledWith(
-      'https://api.linear.app/graphql',
+    expect(mockGetOctokit).toHaveBeenCalledWith('');
+    expect(mockRequest).toHaveBeenCalledWith(
+      'POST https://api.linear.app/graphql',
       expect.objectContaining({
-        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'test-key'
+          'Authorization': 'Bearer test-api-key'
         },
-        body: expect.stringContaining('ABC-123')
+        data: {
+          query: expect.stringContaining('query GetTicket($id: String!)'),
+          variables: {
+            id: 'TEST-123'
+          }
+        }
       })
     );
   });
 
-  it('should handle HTTP errors', async () => {
-    mockedFetch.mockResolvedValueOnce({
-      ok: false,
-      status: 404
-    } as Response);
-
-    await expect(fetchLinearTicket('test-key', 'ABC-123')).rejects.toThrow('HTTP error! status: 404');
-  });
-
-  it('should handle GraphQL errors', async () => {
-    const mockResponse = {
-      errors: [{ message: 'GraphQL Error' }],
-      data: null
-    };
-
-    mockedFetch.mockResolvedValueOnce({
-      ok: true,
+  it('should handle API errors gracefully', async () => {
+    mockRequest.mockImplementation(() => Promise.resolve({
       status: 200,
-      json: () => Promise.resolve(mockResponse)
-    } as Response);
-
-    await expect(fetchLinearTicket('test-key', 'ABC-123')).rejects.toThrow('GraphQL Error');
-  });
-
-  it('should handle missing issue data', async () => {
-    const mockResponse = {
+      url: 'https://api.linear.app/graphql',
+      headers: {},
       data: {
-        issue: null
+        errors: [{ message: 'API Error' }]
       }
-    };
+    }));
 
-    mockedFetch.mockResolvedValueOnce({
-      ok: true,
-      status: 200,
-      json: () => Promise.resolve(mockResponse)
-    } as Response);
+    const result = await fetchLinearTicket('test-api-key', 'TEST-123');
 
-    const result = await fetchLinearTicket('test-key', 'ABC-123');
     expect(result).toBeNull();
+    expect(core.setFailed).toHaveBeenCalledWith('Failed to fetch Linear ticket: API Error');
+  });
+
+  it('should handle network errors gracefully', async () => {
+    mockRequest.mockImplementation(() => Promise.reject(new Error('Network error')));
+
+    const result = await fetchLinearTicket('test-api-key', 'TEST-123');
+
+    expect(result).toBeNull();
+    expect(core.setFailed).toHaveBeenCalledWith('Failed to fetch Linear ticket: Network error');
+  });
+
+  it('should handle missing ticket data gracefully', async () => {
+    mockRequest.mockImplementation(() => Promise.resolve({
+      status: 200,
+      url: 'https://api.linear.app/graphql',
+      headers: {},
+      data: {
+        data: {
+          issue: null
+        }
+      }
+    }));
+
+    const result = await fetchLinearTicket('test-api-key', 'TEST-123');
+
+    expect(result).toBeNull();
+    expect(core.setFailed).toHaveBeenCalledWith('No ticket data found in response');
   });
 }); 

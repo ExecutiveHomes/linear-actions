@@ -1,65 +1,54 @@
-# Get Release Notes
+# Get Linear Tickets GitHub Action
 
-A TypeScript utility for generating release notes from Linear tickets and git commits.
-
-## Features
-
-- Extracts Linear ticket IDs from git commit messages
-- Fetches ticket details from Linear API
-- Generates formatted release notes with ticket information
-- Includes TestFlight link and build details
-- Fully typed with TypeScript
-- Comprehensive test coverage
-
-## Installation
-
-```bash
-npm install get-release-notes
-```
+This GitHub Action fetches Linear tickets from commits between tags matching a specified pattern.
 
 ## Usage
 
-```typescript
-import { getReleaseNotes } from 'get-release-notes';
-
-const config = {
-  linearApiKey: 'your-linear-api-key',
-  buildNumber: '1.0.0',
-  lastTag: 'v0.9.0', // optional
-  githubSha: 'abc123', // optional
-  testflightAppId: 'testflight-id' // optional
-};
-
-const releaseNotes = await getReleaseNotes(config);
-console.log(releaseNotes);
+```yaml
+- name: Get Linear Tickets
+  id: linear_tickets
+  uses: executivehomes/get-linear-tickets@v1
+  with:
+    linear-api-key: ${{ secrets.LINEAR_API_KEY }}
+    tag-pattern: "release/*"
 ```
 
-## CLI Usage
+## Inputs
 
-The package can also be used as a CLI tool:
+| Name | Description | Required | Default |
+|------|-------------|----------|---------|
+| `linear-api-key` | Linear API Key | Yes | - |
+| `tag-pattern` | Tag pattern to match commits (e.g., "release/*") | Yes | - |
 
-```bash
-LINEAR_API_KEY=your-key BUILD_NUMBER=1.0.0 node dist/index.js
+## Outputs
+
+| Name | Description |
+|------|-------------|
+| `tickets` | Array of objects containing commit messages and Linear ticket links |
+
+Example output:
+```json
+[
+  {
+    "message": "feat: Add new feature (TICKET-123)",
+    "ticket": "https://linear.app/org/issue/TICKET-123"
+  }
+]
 ```
-
-Required environment variables:
-- `LINEAR_API_KEY`: Your Linear API key
-- `BUILD_NUMBER`: The build number for the release
-
-Optional environment variables:
-- `LAST_TAG`: The last release tag to compare against
-- `GITHUB_SHA`: The commit SHA of the current build
-- `TESTFLIGHT_APP_ID`: Your TestFlight app ID
 
 ## Development
 
-```bash
-# Install dependencies
-npm install
+1. Install dependencies:
+   ```bash
+   yarn install
+   ```
 
-# Run tests
-npm test
+2. Build:
+   ```bash
+   yarn build
+   ```
 
-# Build
-npm run build
-```
+3. Test:
+   ```bash
+   yarn test
+   ```

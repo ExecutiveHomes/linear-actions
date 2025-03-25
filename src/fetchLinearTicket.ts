@@ -1,53 +1,88 @@
-import fetch from 'node-fetch';
+import * as core from '@actions/core';
+import * as github from '@actions/github';
 
-import { logger } from './logger';
-import type { LinearTicket } from './types';
+interface LinearTicket {
+  id: string;
+  title: string;
+  description: string;
+  state: {
+    name: string;
+  };
+  assignee?: {
+    name: string;
+  };
+  labels: {
+    nodes: Array<{
+      name: string;
+    }>;
+  };
+}
 
-export async function fetchLinearTicket(linearApiKey: string, ticketId: string): Promise<LinearTicket | null> {
+interface LinearResponse {
+  data?: {
+    issue: LinearTicket;
+  };
+  errors?: Array<{
+    message: string;
+  }>;
+}
+
+export async function fetchLinearTicket(
+  linearApiKey: string,
+  ticketId: string
+): Promise<LinearTicket | null> {
   try {
-    const query = `
-      query($id: String!) {
-        issue(id: $id) {
-          title
-          description
-          url
-        }
-      }
-    `;
+    core.debug(`Fetching Linear ticket ${ticketId}`);
+    const octokit = github.getOctokit(''); // Token not needed for external API calls
 
-    const response = await fetch('https://api.linear.app/graphql', {
-      method: 'POST',
+    const response = await octokit.request('POST https://api.linear.app/graphql', {
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': linearApiKey
+        Authorization: `Bearer ${linearApiKey}`,
       },
-      body: JSON.stringify({
-        query,
-        variables: { id: ticketId }
-      })
+      data: {
+        query: `
+          query GetTicket($id: String!) {
+            issue(id: $id) {
+              id
+              title
+              description
+              state {
+                name
+              }
+              assignee {
+                name
+              }
+              labels {
+                nodes {
+                  name
+                }
+              }
+            }
+          }
+        `,
+        variables: {
+          id: ticketId,
+        },
+      },
     });
 
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const data = await response.json();
-
-    if (data.errors) {
-      throw new Error('GraphQL Error');
-    }
-
-    if (!data.data?.issue) {
+    const responseData = response.data;
+    
+    if (responseData.errors) {
+      core.setFailed(`Failed to fetch Linear ticket: ${responseData.errors[0].message}`);
       return null;
     }
 
-    return {
-      title: data.data.issue.title,
-      description: data.data.issue.description,
-      url: data.data.issue.url
-    };
+    if (!responseData.data?.issue) {
+      core.setFailed('No ticket data found in response');
+      return null;
+    }
+
+    core.debug(`Successfully fetched ticket: ${JSON.stringify(responseData.data.issue, null, 2)}`);
+    return responseData.data.issue;
   } catch (error) {
-    logger.error(`Error fetching ticket ${ticketId}:`, error);
-    throw error;
+    core.setFailed(`Failed to fetch Linear ticket: ${(error as Error).message}`);
+    return null;
   }
 } 

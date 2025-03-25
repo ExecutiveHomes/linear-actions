@@ -1,19 +1,40 @@
 export interface LinearTicket {
+  id: string;
   title: string;
-  description: string;
+  description?: string;
   url: string;
 }
 
-export interface ReleaseNotesConfig {
+export interface CommitTicket {
+  message: string;
+  ticket: string; // Linear ticket URL
+}
+
+export interface ActionInputs {
   linearApiKey: string;
-  buildNumber: string;
-  lastTagPattern: string;
-  testflightAppId?: string;
-  branch?: string;
-  commit?: string;
+  tagPattern: string;
+  githubToken: string;
 }
 
 export interface Logger {
   info: (...args: unknown[]) => void;
   error: (...args: unknown[]) => void;
+}
+
+// GitHub API Types
+export interface GitHubTag {
+  name: string;
+  commit: {
+    sha: string;
+    url: string;
+  };
+  zipball_url: string;
+  tarball_url: string;
+  node_id: string;
+}
+
+export interface GitHubCommit {
+  commit: {
+    message: string;
+  };
 } 
