@@ -1,25 +1,29 @@
-name: 'Get Linear Tickets'
-description: 'Fetches Linear tickets from commits matching a tag pattern'
+name: 'Linear Actions'
+description: 'GitHub Actions for Linear integration'
 author: 'Luke Farrell'
 
 inputs:
+  action:
+    description: 'The action to run (e.g. get-linear-commits)'
+    required: true
   linear-api-key:
     description: 'Linear API Key'
     required: true
   tag-pattern:
-    description: 'Tag pattern to match commits (e.g., "release/*")'
+    description: 'Tag pattern to match commits (e.g. "release/*")'
     required: true
 
 outputs:
   tickets:
-    description: 'Array of objects containing commit messages and Linear ticket links'
-    value: ${{ steps.get_tickets.outputs.tickets }}
+    description: 'Array of Linear tickets'
 
 runs:
   using: 'node20'
-  main: 'dist/src/index.js'
-  pre: 'dist/src/pre.js'
-  post: 'dist/src/post.js'
+  pre: 'dist/pre/index.js'
+  main: 'dist/index.js'
+  post: 'dist/post/index.js'
+  pre-if: 'always()'
+  post-if: 'always()'
 
 branding:
   icon: 'ticket'

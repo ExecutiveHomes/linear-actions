@@ -33,54 +33,62 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-const rest_1 = require("@octokit/rest");
+exports.getLinearCommits = getLinearCommits;
 const core = __importStar(require("@actions/core"));
 const github = __importStar(require("@actions/github"));
 const getLinearTickets_1 = require("./getLinearTickets");
 const pre_1 = require("./pre");
 const post_1 = require("./post");
+async function getLinearCommits(linearApiKey, tagPattern) {
+    const octokit = github.getOctokit(process.env.GITHUB_TOKEN || '');
+    // List all tags
+    const { data: tags } = await octokit.rest.repos.listTags({
+        owner: github.context.repo.owner,
+        repo: github.context.repo.repo,
+    });
+    // Filter tags matching the pattern
+    const matchingTags = tags.filter(tag => {
+        const pattern = new RegExp(tagPattern);
+        return pattern.test(tag.name);
+    });
+    // Sort tags by name (newest first)
+    matchingTags.sort((a, b) => b.name.localeCompare(a.name));
+    if (matchingTags.length < 2) {
+        core.info('Not enough tags found to compare');
+        return [];
+    }
+    // Get commits between the two most recent tags
+    const { data: commits } = await octokit.rest.repos.compareCommits({
+        owner: github.context.repo.owner,
+        repo: github.context.repo.repo,
+        base: matchingTags[1].name,
+        head: matchingTags[0].name,
+    });
+    // Extract commit messages
+    const commitMessages = commits.commits.map(commit => commit.commit.message);
+    // Get Linear tickets from commit messages
+    return (0, getLinearTickets_1.getLinearTickets)(commitMessages, linearApiKey);
+}
 async function run() {
     try {
         await (0, pre_1.pre)();
+        const action = core.getInput('action', { required: true });
         const linearApiKey = core.getInput('linear-api-key', { required: true });
-        const tagPattern = core.getInput('tag-pattern', { required: true });
-        const githubToken = core.getInput('github-token', { required: true });
-        const octokit = new rest_1.Octokit({ auth: githubToken });
-        // List all tags
-        const { data: tags } = await octokit.repos.listTags({
-            owner: github.context.repo.owner,
-            repo: github.context.repo.repo,
-        });
-        // Filter tags matching the pattern
-        const matchingTags = tags.filter(tag => {
-            const pattern = new RegExp(tagPattern);
-            return pattern.test(tag.name);
-        });
-        // Sort tags by name (newest first)
-        matchingTags.sort((a, b) => b.name.localeCompare(a.name));
-        if (matchingTags.length < 2) {
-            core.info('Not enough tags found to compare');
-            return;
+        switch (action) {
+            case 'get-linear-commits': {
+                const tagPattern = core.getInput('tag-pattern', { required: true });
+                const tickets = await getLinearCommits(linearApiKey, tagPattern);
+                core.setOutput('tickets', JSON.stringify(tickets));
+                break;
+            }
+            // Add more cases here for future actions
+            default:
+                throw new Error(`Unknown action: ${action}`);
         }
-        // Get commits between the two most recent tags
-        const { data: commits } = await octokit.repos.compareCommits({
-            owner: github.context.repo.owner,
-            repo: github.context.repo.repo,
-            base: matchingTags[1].name,
-            head: matchingTags[0].name,
-        });
-        // Extract commit messages
-        const commitMessages = commits.commits.map(commit => commit.commit.message);
-        // Get Linear tickets from commit messages
-        const tickets = await (0, getLinearTickets_1.getLinearTickets)(commitMessages, linearApiKey);
-        // Output tickets as JSON
-        core.setOutput('tickets', JSON.stringify(tickets));
         await (0, post_1.post)();
     }
     catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-        core.error(errorMessage);
-        core.setFailed(errorMessage);
+        core.setFailed(`Action failed: ${error.message}`);
     }
 }
 run();

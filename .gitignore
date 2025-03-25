@@ -8,7 +8,6 @@ node_modules/
 !.yarn/versions
 
 # Build outputs
-dist/
 build/
 
 # Test coverage
