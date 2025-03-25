@@ -42,18 +42,17 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.fetchLinearTicket = fetchLinearTicket;
 const core = __importStar(__nccwpck_require__(7484));
-const github = __importStar(__nccwpck_require__(3228));
 async function fetchLinearTicket(linearApiKey, ticketId) {
     var _a;
     try {
         core.debug(`Fetching Linear ticket ${ticketId}`);
-        const octokit = github.getOctokit(''); // Token not needed for external API calls
-        const response = await octokit.request('POST https://api.linear.app/graphql', {
+        const response = await fetch('https://api.linear.app/graphql', {
+            method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                Authorization: `Bearer ${linearApiKey}`,
+                'Authorization': `${linearApiKey}`,
             },
-            data: {
+            body: JSON.stringify({
                 query: `
           query GetTicket($id: String!) {
             issue(id: $id) {
@@ -77,22 +76,22 @@ async function fetchLinearTicket(linearApiKey, ticketId) {
                 variables: {
                     id: ticketId,
                 },
-            },
+            }),
         });
-        const responseData = response.data;
+        const responseData = await response.json();
         if (responseData.errors) {
-            core.setFailed(`Failed to fetch Linear ticket: ${responseData.errors[0].message}`);
+            core.error(`Failed to fetch Linear ticket: ${responseData.errors[0].message}`);
             return null;
         }
         if (!((_a = responseData.data) === null || _a === void 0 ? void 0 : _a.issue)) {
-            core.setFailed('No ticket data found in response');
+            core.error('No ticket data found in response');
             return null;
         }
         core.debug(`Successfully fetched ticket: ${JSON.stringify(responseData.data.issue, null, 2)}`);
         return responseData.data.issue;
     }
     catch (error) {
-        core.setFailed(`Failed to fetch Linear ticket: ${error.message}`);
+        core.error(`Failed to fetch Linear ticket: ${error.message}`);
         return null;
     }
 }
