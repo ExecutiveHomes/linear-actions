@@ -51,7 +51,6 @@ async function fetchLinearTicket(linearApiKey, ticketId) {
             issue(id: $id) {
               id
               title
-              description
               state {
                 name
               }

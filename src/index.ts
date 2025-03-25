@@ -5,6 +5,31 @@ import { pre } from './pre';
 import { post } from './post';
 import { CommitWithTicket } from './types';
 
+function compareVersions(a: string, b: string): number {
+  // Extract version numbers from tags
+  const getVersion = (tag: string) => {
+    const match = tag.match(/\d+(\.\d+)*|\d+/);
+    return match ? match[0] : '0';
+  };
+
+  const versionA = getVersion(a);
+  const versionB = getVersion(b);
+
+  // Split version strings into parts
+  const partsA = versionA.split('.').map(Number);
+  const partsB = versionB.split('.').map(Number);
+
+  // Compare each part
+  for (let i = 0; i < Math.max(partsA.length, partsB.length); i++) {
+    const partA = partsA[i] || 0;
+    const partB = partsB[i] || 0;
+    if (partA !== partB) {
+      return partB - partA; // Reverse order for newest first
+    }
+  }
+  return 0;
+}
+
 export async function getLinearCommits(
   linearApiKey: string,
   tagPattern: string
@@ -34,8 +59,11 @@ export async function getLinearCommits(
     return matches;
   });
 
+  // Sort tags by version number (newest first)
+  matchingTags.sort((a, b) => compareVersions(a.name, b.name));
+
   core.info(`Found ${matchingTags.length} matching tags`);
-  core.info('Matching tags:');
+  core.info('Matching tags (sorted by version):');
   matchingTags.forEach(tag => core.info(`- ${tag.name}`));
 
   if (matchingTags.length === 0) {
