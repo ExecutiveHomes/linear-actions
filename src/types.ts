@@ -1,8 +1,18 @@
 export interface LinearTicket {
   id: string;
   title: string;
-  description?: string;
-  url: string;
+  description: string;
+  state: {
+    name: string;
+  };
+  assignee?: {
+    name: string;
+  };
+  labels: {
+    nodes: Array<{
+      name: string;
+    }>;
+  };
 }
 
 export interface CommitTicket {
@@ -28,9 +38,6 @@ export interface GitHubTag {
     sha: string;
     url: string;
   };
-  zipball_url: string;
-  tarball_url: string;
-  node_id: string;
 }
 
 export interface GitHubCommit {

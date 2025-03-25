@@ -26,8 +26,15 @@ jobs:
       - name: Run tests
         run: yarn test
         
-      - name: Test Action (Local)
+      - name: Test getLinearCommits Action
+        id: linear_commits
         uses: ./
         with:
+          action: get-linear-commits
           linear-api-key: ${{ secrets.LINEAR_API_KEY }}
-          tag-pattern: "release/*" 
+          tag-pattern: "release/*"
+          
+      - name: Log Action Output
+        run: |
+          echo "Linear Tickets:"
+          echo '${{ steps.linear_commits.outputs.tickets }}' 

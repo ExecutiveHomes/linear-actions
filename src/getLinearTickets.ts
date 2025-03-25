@@ -1,22 +1,6 @@
 import * as core from '@actions/core';
 import { fetchLinearTicket } from './fetchLinearTicket';
-
-interface LinearTicket {
-  id: string;
-  title: string;
-  description: string;
-  state: {
-    name: string;
-  };
-  assignee?: {
-    name: string;
-  };
-  labels: {
-    nodes: Array<{
-      name: string;
-    }>;
-  };
-}
+import { LinearTicket } from './types';
 
 export async function getLinearTickets(
   commitMessages: string[],
