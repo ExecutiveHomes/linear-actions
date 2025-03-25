@@ -7,9 +7,13 @@ import { LinearTicket, GitHubTag, GitHubCommit } from './types';
 
 export async function getLinearCommits(
   linearApiKey: string,
-  tagPattern: string,
-  githubToken: string
+  tagPattern: string
 ): Promise<LinearTicket[]> {
+  const githubToken = process.env.GITHUB_TOKEN;
+  if (!githubToken) {
+    throw new Error('GITHUB_TOKEN environment variable is required when running in GitHub Actions');
+  }
+
   const octokit = github.getOctokit(githubToken);
 
   // List all tags
@@ -18,11 +22,21 @@ export async function getLinearCommits(
     repo: github.context.repo.repo,
   });
 
+  core.info(`Found ${tags.length} total tags`);
+  core.info('All tags:');
+  tags.forEach(tag => core.info(`- ${tag.name}`));
+
   // Filter tags matching the pattern
   const matchingTags = (tags as GitHubTag[]).filter(tag => {
-    const pattern = new RegExp(tagPattern);
-    return pattern.test(tag.name);
+    const pattern = new RegExp(tagPattern.replace('*', '.*'));
+    const matches = pattern.test(tag.name);
+    core.info(`Tag ${tag.name} ${matches ? 'matches' : 'does not match'} pattern ${tagPattern}`);
+    return matches;
   });
+
+  core.info(`Found ${matchingTags.length} matching tags`);
+  core.info('Matching tags:');
+  matchingTags.forEach(tag => core.info(`- ${tag.name}`));
 
   // Sort tags by name (newest first)
   matchingTags.sort((a, b) => b.name.localeCompare(a.name));
@@ -51,19 +65,14 @@ async function run(): Promise<void> {
   try {
     await pre();
 
-    const githubToken = process.env.GITHUB_TOKEN;
-    
-    if (!githubToken) {
-      throw new Error('GITHUB_TOKEN environment variable is required');
-    }
-
     const action = core.getInput('action', { required: true });
     const linearApiKey = core.getInput('linear-api-key', { required: true });
 
     switch (action) {
       case 'get-linear-commits': {
         const tagPattern = core.getInput('tag-pattern', { required: true });
-        const tickets = await getLinearCommits(linearApiKey, tagPattern, githubToken);
+        core.info(`Using tag pattern: ${tagPattern}`);
+        const tickets = await getLinearCommits(linearApiKey, tagPattern);
         core.setOutput('tickets', JSON.stringify(tickets));
         break;
       }
