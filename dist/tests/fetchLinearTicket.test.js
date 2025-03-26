@@ -94,14 +94,14 @@ global.fetch = mockFetch;
         mockFetch.mockResolvedValue(mockResponse);
         const result = await (0, fetchLinearTicket_1.fetchLinearTicket)('test-api-key', 'TEST-123');
         (0, globals_1.expect)(result).toBeNull();
-        (0, globals_1.expect)(core.setFailed).toHaveBeenCalledWith('Failed to fetch Linear ticket: API Error');
+        (0, globals_1.expect)(core.debug).toHaveBeenCalledWith('Error fetching Linear ticket TEST-123: API Error');
         (0, globals_1.expect)(core.debug).toHaveBeenCalledWith('Fetching Linear ticket TEST-123');
     });
     it('should handle network errors gracefully', async () => {
         mockFetch.mockRejectedValue(new Error('Network error'));
         const result = await (0, fetchLinearTicket_1.fetchLinearTicket)('test-api-key', 'TEST-123');
         (0, globals_1.expect)(result).toBeNull();
-        (0, globals_1.expect)(core.setFailed).toHaveBeenCalledWith('Failed to fetch Linear ticket: Network error');
+        (0, globals_1.expect)(core.debug).toHaveBeenCalledWith('Failed to fetch Linear ticket TEST-123: Network error');
         (0, globals_1.expect)(core.debug).toHaveBeenCalledWith('Fetching Linear ticket TEST-123');
     });
     it('should handle missing ticket data gracefully', async () => {
@@ -116,7 +116,7 @@ global.fetch = mockFetch;
         mockFetch.mockResolvedValue(mockResponse);
         const result = await (0, fetchLinearTicket_1.fetchLinearTicket)('test-api-key', 'TEST-123');
         (0, globals_1.expect)(result).toBeNull();
-        (0, globals_1.expect)(core.setFailed).toHaveBeenCalledWith('No ticket data found in response');
+        (0, globals_1.expect)(core.debug).toHaveBeenCalledWith('No ticket data found for TEST-123');
         (0, globals_1.expect)(core.debug).toHaveBeenCalledWith('Fetching Linear ticket TEST-123');
     });
 });

@@ -73,7 +73,7 @@ describe('fetchLinearTicket', () => {
     const result = await fetchLinearTicket('test-api-key', 'TEST-123');
 
     expect(result).toBeNull();
-    expect(core.setFailed).toHaveBeenCalledWith('Failed to fetch Linear ticket: API Error');
+    expect(core.debug).toHaveBeenCalledWith('Error fetching Linear ticket TEST-123: API Error');
     expect(core.debug).toHaveBeenCalledWith('Fetching Linear ticket TEST-123');
   });
 
@@ -83,7 +83,7 @@ describe('fetchLinearTicket', () => {
     const result = await fetchLinearTicket('test-api-key', 'TEST-123');
 
     expect(result).toBeNull();
-    expect(core.setFailed).toHaveBeenCalledWith('Failed to fetch Linear ticket: Network error');
+    expect(core.debug).toHaveBeenCalledWith('Failed to fetch Linear ticket TEST-123: Network error');
     expect(core.debug).toHaveBeenCalledWith('Fetching Linear ticket TEST-123');
   });
 
@@ -101,7 +101,7 @@ describe('fetchLinearTicket', () => {
     const result = await fetchLinearTicket('test-api-key', 'TEST-123');
 
     expect(result).toBeNull();
-    expect(core.setFailed).toHaveBeenCalledWith('No ticket data found in response');
+    expect(core.debug).toHaveBeenCalledWith('No ticket data found for TEST-123');
     expect(core.debug).toHaveBeenCalledWith('Fetching Linear ticket TEST-123');
   });
 }); 
