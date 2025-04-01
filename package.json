@@ -1,6 +1,6 @@
 {
   "name": "@executivehomes/linear-actions",
-  "version": "1.0.12",
+  "version": "1.0.13",
   "description": "GitHub Actions for Linear integration",
   "main": "dist/index.js",
   "types": "dist/src/index.d.ts",
