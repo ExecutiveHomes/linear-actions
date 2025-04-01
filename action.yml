@@ -9,13 +9,13 @@ inputs:
   linear-api-key:
     description: 'Linear API Key'
     required: true
-  tag-pattern:
-    description: 'Tag pattern to match commits (e.g. "release/*")'
+  since:
+    description: 'Git reference point to compare commits from (can be a tag, commit SHA, branch name, or relative reference)'
     required: true
 
 outputs:
-  tickets:
-    description: 'Array of Linear tickets'
+  commits:
+    description: 'Array of commits with their associated Linear tickets (if found)'
 
 runs:
   using: 'node20'
