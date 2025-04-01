@@ -145,42 +145,15 @@ const exec = __importStar(__nccwpck_require__(5236));
 const fetchLinearTicket_1 = __nccwpck_require__(5541);
 const pre_1 = __nccwpck_require__(6425);
 const post_1 = __nccwpck_require__(9548);
-async function getLinearCommits(linearApiKey, tagPattern) {
+async function getLinearCommits(linearApiKey, since) {
     const githubToken = process.env.GITHUB_TOKEN;
     if (!githubToken) {
         throw new Error('GITHUB_TOKEN environment variable is required when running in GitHub Actions');
     }
     const octokit = github.getOctokit(githubToken);
-    // Get tags sorted by creation date using git command
-    let tagsOutput = '';
-    await exec.exec('git', ['for-each-ref', '--sort=-creatordate', 'refs/tags/', '--format=%(refname:short)'], {
-        listeners: {
-            stdout: (data) => {
-                tagsOutput += data.toString();
-            }
-        }
-    });
-    // Parse the tags output
-    const tags = tagsOutput.trim().split('\n');
-    core.info(`Found ${tags.length} total tags`);
-    core.info('All tags (in chronological order, newest first):');
-    tags.forEach(tag => {
-        core.info(`- ${tag}`);
-    });
-    // Find the first tag that matches our pattern
-    const pattern = new RegExp(tagPattern.replace('*', '.*'));
-    const latestMatchingTag = tags.find(tag => {
-        const matches = pattern.test(tag);
-        core.info(`Tag ${tag} ${matches ? 'matches' : 'does not match'} pattern ${tagPattern}`);
-        return matches;
-    });
-    if (!latestMatchingTag) {
-        core.info('No matching tags found');
-        return { commits: [] };
-    }
-    const base = latestMatchingTag;
+    // Use the provided since reference as the base
+    const base = since;
     const head = 'HEAD';
-    core.info(`Using most recent matching tag: ${base}`);
     core.info(`Comparing ${base}...${head}`);
     // Get commits between the base and head using git command
     let commitsOutput = '';
@@ -242,9 +215,9 @@ async function run() {
         const linearApiKey = core.getInput('linear-api-key', { required: true });
         switch (action) {
             case 'get-linear-commits': {
-                const tagPattern = core.getInput('tag-pattern', { required: true });
-                core.info(`Using tag pattern: ${tagPattern}`);
-                const result = await getLinearCommits(linearApiKey, tagPattern);
+                const since = core.getInput('since', { required: true });
+                core.info(`Using since reference: ${since}`);
+                const result = await getLinearCommits(linearApiKey, since);
                 core.setOutput('commits', JSON.stringify(result.commits));
                 break;
             }
@@ -361,8 +334,8 @@ async function pre() {
     try {
         // Validate required inputs
         const linearApiKey = core.getInput('linear-api-key', { required: true });
-        const tagPattern = core.getInput('tag-pattern', { required: true });
-        if (!linearApiKey || !tagPattern) {
+        const since = core.getInput('since', { required: true });
+        if (!linearApiKey || !since) {
             throw new Error('Missing required inputs');
         }
     }

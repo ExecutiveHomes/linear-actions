@@ -1,4 +1,8 @@
 #!/usr/bin/env sh
 . "$(dirname -- "$0")/_/husky.sh"
 
+# Build the project
 yarn build
+
+# Stage the dist files
+git add dist/ 
