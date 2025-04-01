@@ -47,4 +47,36 @@ jobs:
       - name: Log Action Output
         run: |
           echo "Commits with Linear Tickets:"
-          echo '${{ steps.linear_commits.outputs.commits }}' 
+          echo '${{ steps.linear_commits.outputs.commits }}'
+
+      - name: Test Commit Parsing
+        run: |
+          # Save the JSON to a file
+          echo '${{ steps.linear_commits.outputs.commits }}' > commits.json
+          
+          # Test JSON validity
+          if ! jq '.' commits.json > /dev/null 2>&1; then
+            echo "Error: Invalid JSON output"
+            exit 1
+          fi
+          
+          # Test parsing special characters in commit messages
+          echo "Testing commit message parsing..."
+          jq -r '.[].message' commits.json | while read -r message; do
+            echo "Found commit message: $message"
+          done
+          
+          # Test ticket information parsing
+          echo "Testing ticket information parsing..."
+          jq -r '.[] | select(.ticket != null) | "Ticket: \(.ticket.id), URL: \(.ticket.url), Assignee: \(.ticket.assignee.name // "Unassigned")"' commits.json
+          
+          # Test generating release notes format
+          echo "Testing release notes format..."
+          VERSION_NAME="1.0.414"
+          CURRENT_DATE=$(date "+%B %d, %Y")
+          echo "## Release v${VERSION_NAME} – ${CURRENT_DATE}\n" > release_notes.md
+          
+          jq -r '.[] | "• \(.message) \(if .ticket != null then "[\(.ticket.id)](\(.ticket.url)) @\(.ticket.assignee.name // "Unassigned")" else "" end)"' commits.json >> release_notes.md
+          
+          echo "Generated release notes:"
+          cat release_notes.md 
