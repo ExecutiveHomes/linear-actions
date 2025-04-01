@@ -4,9 +4,9 @@ export async function pre(): Promise<void> {
   try {
     // Validate required inputs
     const linearApiKey = core.getInput('linear-api-key', { required: true });
-    const tagPattern = core.getInput('tag-pattern', { required: true });
+    const since = core.getInput('since', { required: true });
 
-    if (!linearApiKey || !tagPattern) {
+    if (!linearApiKey || !since) {
       throw new Error('Missing required inputs');
     }
   } catch (error) {

@@ -119,6 +119,8 @@ Example output:
    yarn test
    ```
 
+Note: This project uses Husky to run the build before each push. This ensures that the built files are always up to date with the source code. The pre-push hook will prevent pushing if the build fails.
+
 ## Contributing
 
 This package is designed to be modular and expandable. Each action is implemented as a separate function in `src/index.ts` and can be used independently or as part of a GitHub Action workflow.
