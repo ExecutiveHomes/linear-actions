@@ -34,6 +34,13 @@ jobs:
       - name: Run tests
         run: yarn test
         
+      - name: Get Previous Tag
+        id: previous_tag
+        run: |
+          # Get the latest tag, sorted by version
+          PREVIOUS_TAG=$(git tag --sort=-v:refname | head -n1 2>/dev/null || echo "v0.0.0")
+          echo "previous_tag=${PREVIOUS_TAG}" >> $GITHUB_OUTPUT
+        
       - name: Test getLinearCommits Action
         id: linear_commits
         uses: ./
@@ -42,7 +49,7 @@ jobs:
         with:
           action: get-linear-commits
           linear-api-key: ${{ secrets.LINEAR_API_KEY }}
-          tag-pattern: "release/*"
+          since: ${{ steps.previous_tag.outputs.previous_tag }}
           
       - name: Log Action Output
         run: |

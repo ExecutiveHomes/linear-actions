@@ -17,16 +17,40 @@ Simply reference the action in your workflow:
   with:
     action: get-linear-commits
     linear-api-key: ${{ secrets.LINEAR_API_KEY }}
-    tag-pattern: "release/*"
+    since: "v1.0.0"  # Can be a tag, commit SHA, or branch name
 ```
 
-**Note**: This action requires access to your git history to compare tags, which is why we set `fetch-depth: 0` in the checkout step.
+The `since` parameter can be:
+- A git tag (e.g., `v1.0.0`)
+- A commit SHA (e.g., `abc123def456`)
+- A branch name (e.g., `main`)
+- A relative reference (e.g., `HEAD~10` for last 10 commits)
+
+Example with dynamic tag:
+```yaml
+- name: Get Latest Tag
+  id: previous_tag
+  run: |
+    # Get the latest tag, sorted by version
+    PREVIOUS_TAG=$(git tag --sort=-v:refname | head -n1 2>/dev/null || echo "v0.0.0")
+    echo "previous_tag=${PREVIOUS_TAG}" >> $GITHUB_OUTPUT
+
+- name: Get Linear Commits
+  id: linear_commits
+  uses: ExecutiveHomes/linear-actions@v1
+  with:
+    action: get-linear-commits
+    linear-api-key: ${{ secrets.LINEAR_API_KEY }}
+    since: ${{ steps.previous_tag.outputs.previous_tag }}
+```
+
+**Note**: This action requires access to your git history to compare commits, which is why we set `fetch-depth: 0` in the checkout step.
 
 ## Available Actions
 
 ### Get Linear Commits
 
-Fetches commits between tags matching a specified pattern and links them to Linear tickets when found.
+Fetches commits between a specified reference point and HEAD, linking them to Linear tickets when found.
 
 #### Inputs
 
@@ -34,7 +58,7 @@ Fetches commits between tags matching a specified pattern and links them to Line
 |------|-------------|----------|---------|
 | `action` | The action to run (e.g., "get-linear-commits") | Yes | - |
 | `linear-api-key` | Linear API Key | Yes | - |
-| `tag-pattern` | Tag pattern to match commits (e.g., "release/*") | Yes | - |
+| `since` | Git reference point to compare commits from (can be a tag, commit SHA, branch name, or relative reference) | Yes | - |
 
 #### Outputs
 
